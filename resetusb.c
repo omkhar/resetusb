@@ -5,8 +5,7 @@
 #include <usb.h>
 #include <unistd.h>
 
-int main(void)
-{
+int main(void) {
 	struct usb_bus *busses;
 	usb_init();
 	usb_find_busses();
@@ -20,19 +19,18 @@ int main(void)
 	for (bus = busses; bus; bus = bus->next) {
 		struct usb_device *dev;
 		int val;
-		usb_dev_handle *junk;
+		usb_dev_handle *handle;
 		for (dev = bus->devices; dev; dev = dev->next) {
 			char buf[1024];
-			junk = usb_open ( dev );
-			usb_get_string_simple(junk,2,buf,1023);
-			if ( junk == NULL ){
+			handle = usb_open ( dev );
+			usb_get_string_simple(handle,2,buf,1023);
+			if ( handle == NULL ){
 				fprintf(stderr,"Can't open %p (%s)\n", (void *)dev, buf );
 			} else {
-				val = usb_reset(junk);
+				val = usb_reset(handle);
 				fprintf(stdout, "reset %p %d (%s)\n", (void *)dev, val, buf );
 			}
-			usb_close(junk);
+			usb_close(handle);
 		}
 	}
 }
-o
