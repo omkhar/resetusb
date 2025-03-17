@@ -1,7 +1,6 @@
 /* Mostly taken from https://stackoverflow.com/questions/18195237/c-how-can-i-reset-the-usb-bus-under-linux 
  * Walks the entire USB bus and attempts to reset it. Useful for waking up buggy USB devices
 */
-
 #include <stdio.h>
 #include <usb.h>
 #include <unistd.h>
@@ -14,7 +13,6 @@ int main(void)
 	usb_find_devices();
 	busses = usb_get_busses();
 	struct usb_bus *bus;
-	int c, i, a;
 	if (geteuid() != 0) {
 		fprintf(stderr,"Must be root\n");
 		exit(1);
@@ -28,12 +26,13 @@ int main(void)
 			junk = usb_open ( dev );
 			usb_get_string_simple(junk,2,buf,1023);
 			if ( junk == NULL ){
-				fprintf(stderr,"Can't open %p (%s)\n", dev, buf );
+				fprintf(stderr,"Can't open %p (%s)\n", (void *)dev, buf );
 			} else {
 				val = usb_reset(junk);
-				fprintf(stdout, "reset %p %d (%s)\n", dev, val, buf );
+				fprintf(stdout, "reset %p %d (%s)\n", (void *)dev, val, buf );
 			}
 			usb_close(junk);
 		}
 	}
 }
+o

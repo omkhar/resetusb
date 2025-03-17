@@ -1,5 +1,5 @@
 default:
-	gcc -o resetusb resetusb.c -lusb
+	gcc -Wall -Werror -Wpedantic -o resetusb resetusb.c -lusb
 
 clean:
 	rm resetusb
