@@ -35,6 +35,17 @@ jobs:
         run: |
           "$(go env GOPATH)/bin/gitleaks" dir . --no-banner --redact --exit-code 1
 
+  dependency-review:
+    name: dependency-review
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dependency review
+        uses: actions/dependency-review-action@05fe4576374b728f0c523d6a13d64c25081e0803 # v4.8.3
+
   codeql:
     name: codeql (${{ matrix.language }})
     # resetusb currently uses GitHub CodeQL default setup. Keep advanced setup opt-in
