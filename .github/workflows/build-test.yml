@@ -11,6 +11,10 @@ permissions:
   contents: read
   checks: read
 
+env:
+  CCACHE_DIR: ~/.cache/ccache
+  CCACHE_MAXSIZE: 128M
+
 jobs:
   ci-security:
     name: ci-security
@@ -30,12 +34,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Restore compiler cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ccache
+          key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'Makefile') }}
+          restore-keys: |
+            resetusb-ccache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libusb-1.0-0-dev
+          sudo apt-get install -y build-essential libusb-1.0-0-dev ccache
       - name: Build
-        run: make
+        run: |
+          ccache --zero-stats || true
+          make CC="ccache gcc"
+          ccache --show-stats || true
 
   ci-test:
     name: ci-test
@@ -43,14 +57,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Restore compiler cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ccache
+          key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'Makefile') }}
+          restore-keys: |
+            resetusb-ccache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libusb-1.0-0-dev
+          sudo apt-get install -y build-essential libusb-1.0-0-dev ccache
       - name: Rebuild and verify binary exists
         run: |
-          make
+          ccache --zero-stats || true
+          make CC="ccache gcc"
           test -x ./resetusb
+          ccache --show-stats || true
 
   deploy-staging:
     name: deploy-staging
