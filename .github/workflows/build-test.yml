@@ -12,7 +12,7 @@ permissions:
   checks: read
 
 env:
-  CCACHE_DIR: ~/.cache/ccache
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 128M
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
       - name: Restore compiler cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: ~/.cache/ccache
+          path: ${{ env.CCACHE_DIR }}
           key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'Makefile') }}
           restore-keys: |
             resetusb-ccache-${{ runner.os }}-
@@ -47,6 +47,7 @@ jobs:
           sudo apt-get install -y build-essential libusb-1.0-0-dev ccache
       - name: Build
         run: |
+          mkdir -p "$CCACHE_DIR"
           ccache --zero-stats || true
           make CC="ccache gcc"
           ccache --show-stats || true
@@ -60,7 +61,7 @@ jobs:
       - name: Restore compiler cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: ~/.cache/ccache
+          path: ${{ env.CCACHE_DIR }}
           key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'Makefile') }}
           restore-keys: |
             resetusb-ccache-${{ runner.os }}-
@@ -70,6 +71,7 @@ jobs:
           sudo apt-get install -y build-essential libusb-1.0-0-dev ccache
       - name: Rebuild and verify binary exists
         run: |
+          mkdir -p "$CCACHE_DIR"
           ccache --zero-stats || true
           make CC="ccache gcc"
           test -x ./resetusb
