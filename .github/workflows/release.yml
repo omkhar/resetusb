@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-build:
+    name: release-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libusb-1.0-0-dev
+      - name: Build and test
+        run: |
+          make clean
+          make
+          make test
+      - name: Package artifacts
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+          outdir="dist/${version}"
+          archive="dist/resetusb-${version}-linux-amd64.tar.gz"
+          checksum="${archive}.sha256"
+
+          rm -rf "$outdir"
+          mkdir -p "$outdir"
+
+          install -m 0755 resetusb "$outdir/resetusb"
+          install -m 0644 README.md "$outdir/README.md"
+          install -m 0644 LICENSE "$outdir/LICENSE"
+
+          tar -C dist -czf "$archive" "${version}"
+          sha256sum "$archive" > "$checksum"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          notes_file="$(mktemp)"
+          cat >"$notes_file" <<EOF
+          Automated public release artifact.
+
+          Files:
+          - resetusb-${tag}-linux-amd64.tar.gz
+          - resetusb-${tag}-linux-amd64.tar.gz.sha256
+          EOF
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --verify-tag --title "resetusb ${tag}" --notes-file "$notes_file"
+          fi
+
+          gh release upload "$tag" \
+            "dist/resetusb-${tag}-linux-amd64.tar.gz" \
+            "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256" \
+            --clobber

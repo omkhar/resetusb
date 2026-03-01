@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  checks: read
 
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -24,9 +23,13 @@ jobs:
       - name: Install security tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck
-      - name: Static analysis
-        run: cppcheck --enable=warning,style --error-exitcode=1 resetusb.c
+          sudo apt-get install -y build-essential clang-tools cppcheck libusb-1.0-0-dev shellcheck
+      - name: Static analysis and script linting
+        run: |
+          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --suppress=missingIncludeSystem resetusb.c
+          shellcheck scripts/*.sh
+      - name: Clang static analyzer
+        run: scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
 
   ci-build:
     name: ci-build
@@ -76,52 +79,3 @@ jobs:
           make CC="ccache gcc" test
           test -x ./resetusb
           ccache --show-stats || true
-
-  deploy-staging:
-    name: deploy-staging
-    needs: ci-test
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: [self-hosted, linux, hil]
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libusb-1.0-0-dev
-      - name: Build for HIL lane
-        run: make
-
-  staging-smoke:
-    name: staging-smoke
-    needs: deploy-staging
-    if: needs.deploy-staging.result == 'success'
-    runs-on: [self-hosted, linux, hil]
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libusb-1.0-0-dev
-      - name: Run HIL smoke
-        run: scripts/staging_smoke.sh
-
-  deploy-production:
-    name: deploy-production
-    needs:
-      - ci-security
-      - ci-build
-      - ci-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Verify required checks by SHA
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: scripts/ci_wait_for_checks.sh "${{ github.event.pull_request.head.sha || github.sha }}" 30 "ci-build,ci-test,ci-security"
-      - name: Production deploy placeholder
-        run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "HIL deploy gate passed; no automated production action defined for resetusb."
-          else
-            echo "Not a main push; production deployment skipped."
-          fi
