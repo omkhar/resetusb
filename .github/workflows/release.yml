@@ -39,6 +39,9 @@ jobs:
           chmod +x "${install_dir}/cosign"
           echo "${install_dir}" >> "$GITHUB_PATH"
           "${install_dir}/cosign" version
+      - name: Build release builder image
+        run: docker build -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
+
       - name: Build, test, and package artifacts
         run: |
           docker run --rm \
@@ -47,26 +50,9 @@ jobs:
             -e HOST_GID="$(id -g)" \
             -v "$PWD":/work \
             -w /work \
-            debian:trixie \
+            "resetusb-release-builder:${GITHUB_SHA}" \
             bash -lc '
               set -euo pipefail
-              export DEBIAN_FRONTEND=noninteractive
-
-              dpkg --add-architecture arm64
-              dpkg --add-architecture armhf
-              apt-get update >/dev/null
-              apt-get install -y --no-install-recommends \
-                build-essential \
-                gcc-aarch64-linux-gnu \
-                gcc-arm-linux-gnueabihf \
-                libc6-dev-arm64-cross \
-                libc6-dev-armhf-cross \
-                libusb-1.0-0-dev \
-                libusb-1.0-0-dev:arm64 \
-                libusb-1.0-0-dev:armhf \
-                pkg-config \
-                qemu-user-static >/dev/null
-
               expect_non_root_error() {
                 local log_file="$1"
                 shift
