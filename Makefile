@@ -1,5 +1,7 @@
 CC ?= cc
 CFLAGS ?= -Wall -Werror -Wpedantic -O2
+HARDEN_CFLAGS ?= -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fPIE
+HARDEN_LDFLAGS ?= -Wl,-z,relro,-z,now -pie
 LDLIBS += -lusb-1.0
 UNIT_TEST_BIN := resetusb-tests
 UNIT_TEST_SRC := tests/resetusb_unit_tests.c
@@ -11,13 +13,16 @@ UNAME_S := $(shell uname -s)
 .PHONY: all clean install uninstall test
 
 ifeq ($(UNAME_S),Linux)
+EFFECTIVE_CFLAGS := $(CFLAGS) $(HARDEN_CFLAGS)
+EFFECTIVE_LDFLAGS := $(LDFLAGS) $(HARDEN_LDFLAGS)
+
 all: resetusb
 
 resetusb: resetusb.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CPPFLAGS) $(EFFECTIVE_CFLAGS) -o $@ $< $(EFFECTIVE_LDFLAGS) $(LDLIBS)
 
 $(UNIT_TEST_BIN): $(UNIT_TEST_SRC) resetusb.c resetusb.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DRESETUSB_TEST -o $@ $(UNIT_TEST_SRC) resetusb.c $(LDFLAGS)
+	$(CC) $(CPPFLAGS) $(EFFECTIVE_CFLAGS) -DRESETUSB_TEST -o $@ $(UNIT_TEST_SRC) resetusb.c $(EFFECTIVE_LDFLAGS)
 
 test: resetusb $(UNIT_TEST_BIN)
 	./$(UNIT_TEST_BIN)

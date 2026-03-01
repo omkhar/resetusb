@@ -1,8 +1,18 @@
 #include "resetusb.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
+static int ops_complete(const resetusb_ops *ops) {
+    return ops != NULL && ops->libusb_init != NULL && ops->libusb_get_device_list != NULL &&
+           ops->libusb_free_device_list != NULL && ops->libusb_exit != NULL &&
+           ops->libusb_get_bus_number != NULL && ops->libusb_get_device_address != NULL &&
+           ops->libusb_get_device_descriptor != NULL && ops->libusb_open != NULL &&
+           ops->libusb_get_string_descriptor_ascii != NULL && ops->libusb_reset_device != NULL &&
+           ops->libusb_close != NULL && ops->libusb_error_name != NULL;
+}
 
 static const char *safe_error_name(const resetusb_ops *ops, int code) {
     const char *name = NULL;
@@ -12,13 +22,31 @@ static const char *safe_error_name(const resetusb_ops *ops, int code) {
     return name != NULL ? name : "unknown";
 }
 
+static void sanitize_product_name(char *name) {
+    if (name == NULL) {
+        return;
+    }
+
+    for (size_t i = 0; name[i] != '\0'; i++) {
+        unsigned char ch = (unsigned char)name[i];
+        if (!isprint(ch)) {
+            name[i] = '?';
+        }
+    }
+}
+
 int resetusb_run(const resetusb_ops *ops, uid_t euid, FILE *out, FILE *err) {
     libusb_context *ctx = NULL;
     libusb_device **devices = NULL;
     int failures = 0;
     int resets = 0;
 
-    if (ops == NULL || out == NULL || err == NULL) {
+    if (out == NULL || err == NULL) {
+        return 1;
+    }
+
+    if (!ops_complete(ops)) {
+        fprintf(err, "Internal error: incomplete libusb operations table\n");
         return 1;
     }
 
@@ -42,11 +70,23 @@ int resetusb_run(const resetusb_ops *ops, uid_t euid, FILE *out, FILE *err) {
         return 1;
     }
 
+    if (device_count > 0 && devices == NULL) {
+        fprintf(err, "Failed to enumerate USB devices: null device list\n");
+        ops->libusb_exit(ctx);
+        return 1;
+    }
+
     for (ssize_t i = 0; i < device_count; i++) {
         libusb_device *device = devices[i];
         libusb_device_handle *handle = NULL;
         struct libusb_device_descriptor descriptor;
         char product[256] = "<unknown>";
+
+        if (device == NULL) {
+            fprintf(err, "Encountered null device entry at index %zd\n", i);
+            failures++;
+            continue;
+        }
 
         rc = ops->libusb_get_device_descriptor(device, &descriptor);
         if (rc != LIBUSB_SUCCESS) {
@@ -79,7 +119,12 @@ int resetusb_run(const resetusb_ops *ops, uid_t euid, FILE *out, FILE *err) {
                 (unsigned char *)product,
                 (int)sizeof(product) - 1);
             if (len > 0) {
-                product[len] = '\0';
+                size_t product_len = (size_t)len;
+                if (product_len >= sizeof(product)) {
+                    product_len = sizeof(product) - 1;
+                }
+                product[product_len] = '\0';
+                sanitize_product_name(product);
             } else {
                 snprintf(product, sizeof(product), "<string unavailable>");
             }

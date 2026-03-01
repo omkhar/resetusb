@@ -42,7 +42,7 @@ static int token_device_1;
 static int token_handle_0;
 static int token_handle_1;
 
-static int index_for_device(libusb_device *device) {
+static int index_for_device(const libusb_device *device) {
     if (device == g_fake.devices[0]) {
         return 0;
     }
@@ -52,7 +52,7 @@ static int index_for_device(libusb_device *device) {
     return -1;
 }
 
-static int index_for_handle(libusb_device_handle *handle) {
+static int index_for_handle(const libusb_device_handle *handle) {
     if (handle == g_fake.handles[0]) {
         return 0;
     }
@@ -259,7 +259,7 @@ static char *read_stream(FILE *stream) {
     return buf;
 }
 
-static int run_with_capture(uid_t euid, char **stdout_text, char **stderr_text) {
+static int run_with_capture(const resetusb_ops *ops, uid_t euid, char **stdout_text, char **stderr_text) {
     FILE *out = tmpfile();
     FILE *err = tmpfile();
     int rc;
@@ -267,7 +267,7 @@ static int run_with_capture(uid_t euid, char **stdout_text, char **stderr_text) 
     assert(out != NULL);
     assert(err != NULL);
 
-    rc = resetusb_run(&fake_ops, euid, out, err);
+    rc = resetusb_run(ops, euid, out, err);
     *stdout_text = read_stream(out);
     *stderr_text = read_stream(err);
 
@@ -281,7 +281,7 @@ static void test_requires_root(void) {
 
     char *out = NULL;
     char *err = NULL;
-    int rc = run_with_capture(1000, &out, &err);
+    int rc = run_with_capture(&fake_ops, 1000, &out, &err);
 
     assert(rc == 1);
     assert(g_fake.init_calls == 0);
@@ -298,7 +298,7 @@ static void test_init_failure(void) {
 
     char *out = NULL;
     char *err = NULL;
-    int rc = run_with_capture(0, &out, &err);
+    int rc = run_with_capture(&fake_ops, 0, &out, &err);
 
     assert(rc == 1);
     assert(g_fake.init_calls == 1);
@@ -315,7 +315,7 @@ static void test_successful_reset(void) {
 
     char *out = NULL;
     char *err = NULL;
-    int rc = run_with_capture(0, &out, &err);
+    int rc = run_with_capture(&fake_ops, 0, &out, &err);
 
     assert(rc == 0);
     assert(g_fake.init_calls == 1);
@@ -340,7 +340,7 @@ static void test_mixed_failures_counted(void) {
 
     char *out = NULL;
     char *err = NULL;
-    int rc = run_with_capture(0, &out, &err);
+    int rc = run_with_capture(&fake_ops, 0, &out, &err);
 
     assert(rc == 1);
     assert(g_fake.close_calls[0] == 0);
@@ -361,7 +361,7 @@ static void test_reset_failure_closes_handle(void) {
 
     char *out = NULL;
     char *err = NULL;
-    int rc = run_with_capture(0, &out, &err);
+    int rc = run_with_capture(&fake_ops, 0, &out, &err);
 
     assert(rc == 1);
     assert(g_fake.close_calls[0] == 1);
@@ -373,27 +373,77 @@ static void test_reset_failure_closes_handle(void) {
     free(err);
 }
 
+static void test_incomplete_ops_table_rejected(void) {
+    reset_fake();
+
+    resetusb_ops bad_ops = fake_ops;
+    bad_ops.libusb_reset_device = NULL;
+
+    char *out = NULL;
+    char *err = NULL;
+    int rc = run_with_capture(&bad_ops, 0, &out, &err);
+
+    assert(rc == 1);
+    assert(g_fake.init_calls == 0);
+    assert(out != NULL && strcmp(out, "") == 0);
+    assert(err != NULL && strstr(err, "Internal error: incomplete libusb operations table") != NULL);
+
+    free(out);
+    free(err);
+}
+
+static void test_product_name_sanitized(void) {
+    reset_fake();
+    g_fake.string_value[0] = "Kbd\x1b[31m\n";
+    g_fake.string_rc[0] = 9;
+
+    char *out = NULL;
+    char *err = NULL;
+    int rc = run_with_capture(&fake_ops, 0, &out, &err);
+
+    assert(rc == 0);
+    assert(err != NULL && strcmp(err, "") == 0);
+    assert(out != NULL && strstr(out, "reset bus 1 device 2 (1234:5678) Kbd?[31m?") != NULL);
+    assert(out != NULL && strstr(out, "Summary: reset 1 device(s), 0 failure(s)") != NULL);
+
+    free(out);
+    free(err);
+}
+
+static void test_null_device_entry_counted(void) {
+    reset_fake();
+    g_fake.device_count = 2;
+    g_fake.devices[1] = NULL;
+
+    char *out = NULL;
+    char *err = NULL;
+    int rc = run_with_capture(&fake_ops, 0, &out, &err);
+
+    assert(rc == 1);
+    assert(g_fake.close_calls[0] == 1);
+    assert(out != NULL && strstr(out, "Summary: reset 1 device(s), 1 failure(s)") != NULL);
+    assert(err != NULL && strstr(err, "Encountered null device entry at index 1") != NULL);
+
+    free(out);
+    free(err);
+}
+
 typedef void (*test_fn)(void);
 
-static int run_test(const char *name, test_fn fn) {
+static void run_test(const char *name, test_fn fn) {
     fn();
     fprintf(stdout, "ok - %s\n", name);
-    return 0;
 }
 
 int main(void) {
-    int failures = 0;
-
-    failures += run_test("requires_root", test_requires_root);
-    failures += run_test("init_failure", test_init_failure);
-    failures += run_test("successful_reset", test_successful_reset);
-    failures += run_test("mixed_failures_counted", test_mixed_failures_counted);
-    failures += run_test("reset_failure_closes_handle", test_reset_failure_closes_handle);
-
-    if (failures != 0) {
-        fprintf(stderr, "%d test(s) failed\n", failures);
-        return 1;
-    }
+    run_test("requires_root", test_requires_root);
+    run_test("init_failure", test_init_failure);
+    run_test("successful_reset", test_successful_reset);
+    run_test("mixed_failures_counted", test_mixed_failures_counted);
+    run_test("reset_failure_closes_handle", test_reset_failure_closes_handle);
+    run_test("incomplete_ops_table_rejected", test_incomplete_ops_table_rejected);
+    run_test("product_name_sanitized", test_product_name_sanitized);
+    run_test("null_device_entry_counted", test_null_device_entry_counted);
 
     return 0;
 }
