@@ -1,29 +1,44 @@
-#include <libusb-1.0/libusb.h>
+#include "resetusb.h"
+
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-int main(void) {
+static const char *safe_error_name(const resetusb_ops *ops, int code) {
+    const char *name = NULL;
+    if (ops->libusb_error_name != NULL) {
+        name = ops->libusb_error_name(code);
+    }
+    return name != NULL ? name : "unknown";
+}
+
+int resetusb_run(const resetusb_ops *ops, uid_t euid, FILE *out, FILE *err) {
     libusb_context *ctx = NULL;
     libusb_device **devices = NULL;
     int failures = 0;
     int resets = 0;
 
-    if (geteuid() != 0) {
-        fprintf(stderr, "Must be root\n");
+    if (ops == NULL || out == NULL || err == NULL) {
         return 1;
     }
 
-    int rc = libusb_init(&ctx);
+    if (euid != 0) {
+        fprintf(err, "Must be root\n");
+        return 1;
+    }
+
+    int rc = ops->libusb_init(&ctx);
     if (rc != LIBUSB_SUCCESS) {
-        fprintf(stderr, "Failed to initialize libusb: %s\n", libusb_error_name(rc));
+        fprintf(err, "Failed to initialize libusb: %s\n", safe_error_name(ops, rc));
         return 1;
     }
 
-    ssize_t device_count = libusb_get_device_list(ctx, &devices);
+    ssize_t device_count = ops->libusb_get_device_list(ctx, &devices);
     if (device_count < 0) {
-        fprintf(stderr, "Failed to enumerate USB devices: %s\n", libusb_error_name((int)device_count));
-        libusb_exit(ctx);
+        fprintf(err,
+                "Failed to enumerate USB devices: %s\n",
+                safe_error_name(ops, (int)device_count));
+        ops->libusb_exit(ctx);
         return 1;
     }
 
@@ -33,36 +48,36 @@ int main(void) {
         struct libusb_device_descriptor descriptor;
         char product[256] = "<unknown>";
 
-        rc = libusb_get_device_descriptor(device, &descriptor);
+        rc = ops->libusb_get_device_descriptor(device, &descriptor);
         if (rc != LIBUSB_SUCCESS) {
-            fprintf(stderr,
+            fprintf(err,
                     "Failed to read descriptor for bus %u device %u: %s\n",
-                    (unsigned int)libusb_get_bus_number(device),
-                    (unsigned int)libusb_get_device_address(device),
-                    libusb_error_name(rc));
+                    (unsigned int)ops->libusb_get_bus_number(device),
+                    (unsigned int)ops->libusb_get_device_address(device),
+                    safe_error_name(ops, rc));
             failures++;
             continue;
         }
 
-        rc = libusb_open(device, &handle);
+        rc = ops->libusb_open(device, &handle);
         if (rc != LIBUSB_SUCCESS) {
-            fprintf(stderr,
+            fprintf(err,
                     "Can't open bus %u device %u (%04x:%04x): %s\n",
-                    (unsigned int)libusb_get_bus_number(device),
-                    (unsigned int)libusb_get_device_address(device),
+                    (unsigned int)ops->libusb_get_bus_number(device),
+                    (unsigned int)ops->libusb_get_device_address(device),
                     (unsigned int)descriptor.idVendor,
                     (unsigned int)descriptor.idProduct,
-                    libusb_error_name(rc));
+                    safe_error_name(ops, rc));
             failures++;
             continue;
         }
 
-        if (descriptor.iProduct != 0) {
-            int len = libusb_get_string_descriptor_ascii(
+        if (descriptor.iProduct != 0U) {
+            int len = ops->libusb_get_string_descriptor_ascii(
                 handle,
                 descriptor.iProduct,
                 (unsigned char *)product,
-                sizeof(product) - 1);
+                (int)sizeof(product) - 1);
             if (len > 0) {
                 product[len] = '\0';
             } else {
@@ -70,33 +85,53 @@ int main(void) {
             }
         }
 
-        rc = libusb_reset_device(handle);
+        rc = ops->libusb_reset_device(handle);
         if (rc == LIBUSB_SUCCESS) {
-            printf("reset bus %u device %u (%04x:%04x) %s\n",
-                   (unsigned int)libusb_get_bus_number(device),
-                   (unsigned int)libusb_get_device_address(device),
-                   (unsigned int)descriptor.idVendor,
-                   (unsigned int)descriptor.idProduct,
-                   product);
+            fprintf(out,
+                    "reset bus %u device %u (%04x:%04x) %s\n",
+                    (unsigned int)ops->libusb_get_bus_number(device),
+                    (unsigned int)ops->libusb_get_device_address(device),
+                    (unsigned int)descriptor.idVendor,
+                    (unsigned int)descriptor.idProduct,
+                    product);
             resets++;
         } else {
-            fprintf(stderr,
+            fprintf(err,
                     "Failed reset bus %u device %u (%04x:%04x) %s: %s\n",
-                    (unsigned int)libusb_get_bus_number(device),
-                    (unsigned int)libusb_get_device_address(device),
+                    (unsigned int)ops->libusb_get_bus_number(device),
+                    (unsigned int)ops->libusb_get_device_address(device),
                     (unsigned int)descriptor.idVendor,
                     (unsigned int)descriptor.idProduct,
                     product,
-                    libusb_error_name(rc));
+                    safe_error_name(ops, rc));
             failures++;
         }
 
-        libusb_close(handle);
+        ops->libusb_close(handle);
     }
 
-    libusb_free_device_list(devices, 1);
-    libusb_exit(ctx);
+    ops->libusb_free_device_list(devices, 1);
+    ops->libusb_exit(ctx);
 
-    printf("Summary: reset %d device(s), %d failure(s)\n", resets, failures);
+    fprintf(out, "Summary: reset %d device(s), %d failure(s)\n", resets, failures);
     return failures == 0 ? 0 : 1;
 }
+
+#ifndef RESETUSB_TEST
+static const resetusb_ops default_ops = {
+    .libusb_init = libusb_init,
+    .libusb_get_device_list = libusb_get_device_list,
+    .libusb_free_device_list = libusb_free_device_list,
+    .libusb_exit = libusb_exit,
+    .libusb_get_bus_number = libusb_get_bus_number,
+    .libusb_get_device_address = libusb_get_device_address,
+    .libusb_get_device_descriptor = libusb_get_device_descriptor,
+    .libusb_open = libusb_open,
+    .libusb_get_string_descriptor_ascii = libusb_get_string_descriptor_ascii,
+    .libusb_reset_device = libusb_reset_device,
+    .libusb_close = libusb_close,
+    .libusb_error_name = libusb_error_name,
+};
+
+int main(void) { return resetusb_run(&default_ops, geteuid(), stdout, stderr); }
+#endif

@@ -69,11 +69,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libusb-1.0-0-dev ccache
-      - name: Rebuild and verify binary exists
+      - name: Run unit tests and verify binary exists
         run: |
           mkdir -p "$CCACHE_DIR"
           ccache --zero-stats || true
-          make CC="ccache gcc"
+          make CC="ccache gcc" test
           test -x ./resetusb
           ccache --show-stats || true
 
