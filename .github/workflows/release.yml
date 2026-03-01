@@ -30,7 +30,7 @@ jobs:
             -e HOST_GID="$(id -g)" \
             -v "$PWD":/work \
             -w /work \
-            debian:bookworm \
+            debian:trixie \
             bash -lc '
               set -euo pipefail
               export DEBIAN_FRONTEND=noninteractive
