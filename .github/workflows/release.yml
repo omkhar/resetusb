@@ -21,7 +21,24 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+        run: |
+          set -euo pipefail
+          version="v3.0.2"
+          expected_sha256="46dbdcb5467a3dfec2526923d0b3365e40c8d9dc00ec23d5aca3437449e8cbfd"
+          user_agent="Better Uptime Bot Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"
+          install_dir="${RUNNER_TEMP}/bin"
+
+          mkdir -p "$install_dir"
+          curl --fail --show-error --silent --location \
+            --retry 6 --retry-all-errors --retry-delay 2 \
+            --user-agent "$user_agent" \
+            "https://github.com/sigstore/cosign/releases/download/${version}/cosign-linux-amd64" \
+            --output "${install_dir}/cosign"
+
+          echo "${expected_sha256}  ${install_dir}/cosign" | sha256sum --check --strict
+          chmod +x "${install_dir}/cosign"
+          echo "${install_dir}" >> "$GITHUB_PATH"
+          cosign version
       - name: Build, test, and package artifacts
         run: |
           docker run --rm \
