@@ -55,7 +55,7 @@ jobs:
   deploy-staging:
     name: deploy-staging
     needs: ci-test
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, linux, hil]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
