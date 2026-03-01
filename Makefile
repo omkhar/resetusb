@@ -1,7 +1,7 @@
 CC ?= cc
-CFLAGS ?= -Wall -Werror -Wpedantic -O2
-HARDEN_CFLAGS ?= -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fPIE
-HARDEN_LDFLAGS ?= -Wl,-z,relro,-z,now -pie
+CFLAGS ?= -O2 -Wall -Wformat -Wformat=2 -Wconversion -Wimplicit-fallthrough -Wtrampolines -Werror -Werror=format-security -Wpedantic
+HARDEN_CFLAGS ?= -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS -fstrict-flex-arrays=3 -fstack-clash-protection -fstack-protector-strong -fPIE
+HARDEN_LDFLAGS ?= -Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro,-z,now -pie -Wl,--as-needed -Wl,--no-copy-dt-needed-entries
 LDLIBS += -lusb-1.0
 UNIT_TEST_BIN := resetusb-tests
 UNIT_TEST_SRC := tests/resetusb_unit_tests.c
