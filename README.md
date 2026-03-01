@@ -49,16 +49,30 @@ The CI pipeline enforces:
 
 ## Public Releases
 
-- No staging or production auto-deploy jobs exist in this repository.
-- Public release artifacts are published only from Git tags (`v*`) via `.github/workflows/release.yml`.
+- Public release artifacts are published from Git tags (`v*`) via `.github/workflows/release.yml`.
 - Each release includes:
   - `resetusb-<tag>-linux-amd64.tar.gz`
   - `resetusb-<tag>-linux-amd64.tar.gz.sha256`
+  - `resetusb-<tag>-linux-amd64.tar.gz.sig`
+  - `resetusb-<tag>-linux-amd64.tar.gz.pem`
+  - `resetusb-<tag>-linux-amd64.tar.gz.bundle.json`
 
 Verify an artifact:
 
 ```bash
 sha256sum -c resetusb-<tag>-linux-amd64.tar.gz.sha256
+```
+
+Verify Sigstore provenance (keyless):
+
+```bash
+cosign verify-blob \
+  --bundle resetusb-<tag>-linux-amd64.tar.gz.bundle.json \
+  --certificate resetusb-<tag>-linux-amd64.tar.gz.pem \
+  --signature resetusb-<tag>-linux-amd64.tar.gz.sig \
+  --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release\.yml@refs/tags/.*$' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  resetusb-<tag>-linux-amd64.tar.gz
 ```
 
 ## Collaboration

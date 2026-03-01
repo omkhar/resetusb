@@ -49,5 +49,5 @@ scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
 ## Release Process
 
 - Create and push an annotated tag matching `v*` (for example `v1.2.3`).
-- GitHub Actions `release.yml` builds, tests, packages, and publishes release artifacts.
+- GitHub Actions `release.yml` builds, tests, signs artifacts with Sigstore, verifies signatures, and publishes release artifacts.
 - Do not publish binaries manually outside the release workflow.
