@@ -13,6 +13,12 @@ Small utility program for Linux that enumerates and resets all USB devices (incl
 make
 ```
 
+## Test
+
+```sh
+make test
+```
+
 ## Run
 
 `resetusb` requires root privileges and will attempt to reset every enumerated USB device:
