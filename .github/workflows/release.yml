@@ -28,7 +28,7 @@ jobs:
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
             -v "$PWD":/work \
             -w /work \
-            ubuntu:24.04 \
+            debian:bookworm \
             bash -lc '
               set -euo pipefail
               export DEBIAN_FRONTEND=noninteractive
