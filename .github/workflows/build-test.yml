@@ -92,7 +92,7 @@ jobs:
       - name: Verify required checks by SHA
         env:
           GH_TOKEN: ${{ github.token }}
-        run: scripts/ci_wait_for_checks.sh "${{ github.sha }}" 30 "ci-build,ci-test,ci-security"
+        run: scripts/ci_wait_for_checks.sh "${{ github.event.pull_request.head.sha || github.sha }}" 30 "ci-build,ci-test,ci-security"
       - name: Production deploy placeholder
         run: |
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
