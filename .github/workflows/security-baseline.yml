@@ -37,7 +37,9 @@ jobs:
 
   codeql:
     name: codeql (${{ matrix.language }})
-    if: github.repository_visibility == 'public' || vars.ENABLE_CODE_SCANNING == 'true'
+    # resetusb currently uses GitHub CodeQL default setup. Keep advanced setup opt-in
+    # to avoid SARIF processing conflicts between default and advanced modes.
+    if: vars.ENABLE_CODEQL_ADVANCED == 'true'
     permissions:
       actions: read
       contents: read
