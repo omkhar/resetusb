@@ -24,73 +24,118 @@ jobs:
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
       - name: Install dependencies
         run: |
+          sudo dpkg --add-architecture arm64
+          sudo dpkg --add-architecture armhf
           sudo apt-get update
-          sudo apt-get install -y build-essential libusb-1.0-0-dev
+          sudo apt-get install -y \
+            build-essential \
+            gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabihf \
+            libc6-dev-arm64-cross \
+            libc6-dev-armhf-cross \
+            libusb-1.0-0-dev \
+            libusb-1.0-0-dev:arm64 \
+            libusb-1.0-0-dev:armhf \
+            pkg-config \
+            qemu-user-static
       - name: Build and test
         run: |
+          set -euo pipefail
+
+          expect_non_root_error() {
+            local log_file="$1"
+            shift
+            set +e
+            runuser -u nobody -- "$@" > /dev/null 2>"$log_file"
+            rc=$?
+            set -e
+            if [[ $rc -eq 0 ]]; then
+              echo "Expected non-zero exit for non-root invocation: $*" >&2
+              exit 1
+            fi
+            grep -q "Must be root" "$log_file"
+          }
+
+          # Native amd64 build + tests + runtime validation.
           make clean
-          make
-          make test
+          make CC=gcc
+          make CC=gcc test
+          expect_non_root_error /tmp/resetusb-amd64.log ./resetusb
+
+          # Raspberry Pi 64-bit target (arm64) build + emulated tests + runtime validation.
+          make clean
+          make CC=aarch64-linux-gnu-gcc resetusb-tests resetusb
+          qemu-aarch64-static -L /usr/aarch64-linux-gnu ./resetusb-tests
+          expect_non_root_error /tmp/resetusb-arm64.log qemu-aarch64-static -L /usr/aarch64-linux-gnu ./resetusb
+
+          # Raspberry Pi 32-bit target (armv7/armhf) build + emulated tests + runtime validation.
+          make clean
+          make CC=arm-linux-gnueabihf-gcc resetusb-tests resetusb
+          qemu-arm-static -L /usr/arm-linux-gnueabihf ./resetusb-tests
+          expect_non_root_error /tmp/resetusb-armv7.log qemu-arm-static -L /usr/arm-linux-gnueabihf ./resetusb
       - name: Package artifacts
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME}"
-          outdir="dist/${version}"
-          archive="dist/resetusb-${version}-linux-amd64.tar.gz"
-          checksum="${archive}.sha256"
+          rm -rf dist
+          mkdir -p dist
 
-          rm -rf "$outdir"
-          mkdir -p "$outdir"
+          build_and_pack() {
+            local arch="$1"
+            local cc="$2"
+            local stage_dir="dist/${version}-linux-${arch}"
+            local archive="dist/resetusb-${version}-linux-${arch}.tar.gz"
 
-          install -m 0755 resetusb "$outdir/resetusb"
-          install -m 0644 README.md "$outdir/README.md"
-          install -m 0644 LICENSE "$outdir/LICENSE"
+            make clean
+            make CC="$cc"
 
-          tar -C dist -czf "$archive" "${version}"
-          sha256sum "$archive" > "$checksum"
+            rm -rf "$stage_dir"
+            mkdir -p "$stage_dir"
+
+            install -m 0755 resetusb "$stage_dir/resetusb"
+            install -m 0644 README.md "$stage_dir/README.md"
+            install -m 0644 LICENSE "$stage_dir/LICENSE"
+
+            tar -C dist -czf "$archive" "${version}-linux-${arch}"
+            sha256sum "$archive" > "${archive}.sha256"
+          }
+
+          build_and_pack amd64 gcc
+          build_and_pack arm64 aarch64-linux-gnu-gcc
+          build_and_pack armv7 arm-linux-gnueabihf-gcc
       - name: Sign release artifacts with Sigstore
         env:
           COSIGN_YES: "true"
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME}"
-          archive="dist/resetusb-${version}-linux-amd64.tar.gz"
-          checksum="${archive}.sha256"
+          shopt -s nullglob
 
-          cosign sign-blob \
-            --output-signature "${archive}.sig" \
-            --output-certificate "${archive}.pem" \
-            --bundle "${archive}.bundle.json" \
-            "$archive"
-
-          cosign sign-blob \
-            --output-signature "${checksum}.sig" \
-            --output-certificate "${checksum}.pem" \
-            --bundle "${checksum}.bundle.json" \
-            "$checksum"
+          for archive in dist/resetusb-"${version}"-linux-*.tar.gz; do
+            checksum="${archive}.sha256"
+            cosign sign-blob --bundle "${archive}.bundle.json" "$archive"
+            cosign sign-blob --bundle "${checksum}.bundle.json" "$checksum"
+          done
       - name: Verify Sigstore signatures
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME}"
-          archive="dist/resetusb-${version}-linux-amd64.tar.gz"
-          checksum="${archive}.sha256"
           identity_regex="^https://github\\.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@refs/tags/.*$"
+          shopt -s nullglob
 
-          cosign verify-blob \
-            --bundle "${archive}.bundle.json" \
-            --certificate "${archive}.pem" \
-            --signature "${archive}.sig" \
-            --certificate-identity-regexp "$identity_regex" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            "$archive"
-
-          cosign verify-blob \
-            --bundle "${checksum}.bundle.json" \
-            --certificate "${checksum}.pem" \
-            --signature "${checksum}.sig" \
-            --certificate-identity-regexp "$identity_regex" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            "$checksum"
+          for archive in dist/resetusb-"${version}"-linux-*.tar.gz; do
+            checksum="${archive}.sha256"
+            cosign verify-blob \
+              --bundle "${archive}.bundle.json" \
+              --certificate-identity-regexp "$identity_regex" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "$archive"
+            cosign verify-blob \
+              --bundle "${checksum}.bundle.json" \
+              --certificate-identity-regexp "$identity_regex" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "$checksum"
+          done
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -104,25 +149,29 @@ jobs:
           Files:
           - resetusb-${tag}-linux-amd64.tar.gz
           - resetusb-${tag}-linux-amd64.tar.gz.sha256
-          - resetusb-${tag}-linux-amd64.tar.gz.sig
-          - resetusb-${tag}-linux-amd64.tar.gz.pem
+          - resetusb-${tag}-linux-arm64.tar.gz
+          - resetusb-${tag}-linux-arm64.tar.gz.sha256
+          - resetusb-${tag}-linux-armv7.tar.gz
+          - resetusb-${tag}-linux-armv7.tar.gz.sha256
           - resetusb-${tag}-linux-amd64.tar.gz.bundle.json
-          - resetusb-${tag}-linux-amd64.tar.gz.sha256.sig
-          - resetusb-${tag}-linux-amd64.tar.gz.sha256.pem
           - resetusb-${tag}-linux-amd64.tar.gz.sha256.bundle.json
+          - resetusb-${tag}-linux-arm64.tar.gz.bundle.json
+          - resetusb-${tag}-linux-arm64.tar.gz.sha256.bundle.json
+          - resetusb-${tag}-linux-armv7.tar.gz.bundle.json
+          - resetusb-${tag}-linux-armv7.tar.gz.sha256.bundle.json
           EOF
 
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --verify-tag --title "resetusb ${tag}" --notes-file "$notes_file"
           fi
 
-          gh release upload "$tag" \
-            "dist/resetusb-${tag}-linux-amd64.tar.gz" \
-            "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256" \
-            "dist/resetusb-${tag}-linux-amd64.tar.gz.sig" \
-            "dist/resetusb-${tag}-linux-amd64.tar.gz.pem" \
-            "dist/resetusb-${tag}-linux-amd64.tar.gz.bundle.json" \
-            "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256.sig" \
-            "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256.pem" \
-            "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256.bundle.json" \
-            --clobber
+          upload_files=()
+          for file in \
+            dist/resetusb-"${tag}"-linux-*.tar.gz \
+            dist/resetusb-"${tag}"-linux-*.tar.gz.sha256 \
+            dist/resetusb-"${tag}"-linux-*.tar.gz.bundle.json \
+            dist/resetusb-"${tag}"-linux-*.tar.gz.sha256.bundle.json; do
+            upload_files+=("$file")
+          done
+
+          gh release upload "$tag" "${upload_files[@]}" --clobber
