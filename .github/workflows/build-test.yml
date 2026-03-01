@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  ci-security:
+    name: ci-security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install security tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+      - name: Static analysis
+        run: cppcheck --enable=warning,style --error-exitcode=1 resetusb.c
+
+  ci-build:
+    name: ci-build
+    needs: ci-security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libusb-1.0-0-dev
+      - name: Build
+        run: make
+
+  ci-test:
+    name: ci-test
+    needs: ci-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libusb-1.0-0-dev
+      - name: Rebuild and verify binary exists
+        run: |
+          make
+          test -x ./resetusb
+
+  deploy-staging:
+    name: deploy-staging
+    needs: ci-test
+    if: github.event_name != 'pull_request'
+    runs-on: [self-hosted, linux, hil]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libusb-1.0-0-dev
+      - name: Build for HIL lane
+        run: make
+
+  staging-smoke:
+    name: staging-smoke
+    needs: deploy-staging
+    if: needs.deploy-staging.result == 'success'
+    runs-on: [self-hosted, linux, hil]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libusb-1.0-0-dev
+      - name: Run HIL smoke
+        run: scripts/staging_smoke.sh
+
+  deploy-production:
+    name: deploy-production
+    needs:
+      - ci-security
+      - ci-build
+      - ci-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Verify required checks by SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/ci_wait_for_checks.sh "${{ github.event.pull_request.head.sha || github.sha }}" 30 "ci-build,ci-test,ci-security"
+      - name: Production deploy placeholder
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "HIL deploy gate passed; no automated production action defined for resetusb."
+          else
+            echo "Not a main push; production deployment skipped."
+          fi
