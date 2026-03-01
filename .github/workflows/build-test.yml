@@ -27,7 +27,13 @@ jobs:
       - name: Static analysis and script linting
         run: |
           cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --suppress=missingIncludeSystem resetusb.c
-          shellcheck scripts/*.sh
+          shopt -s nullglob
+          scripts=(scripts/*.sh)
+          if ((${#scripts[@]})); then
+            shellcheck "${scripts[@]}"
+          else
+            echo "No shell scripts to lint."
+          fi
       - name: Clang static analyzer
         run: scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
 
