@@ -38,7 +38,7 @@ jobs:
           echo "${expected_sha256}  ${install_dir}/cosign" | sha256sum --check --strict
           chmod +x "${install_dir}/cosign"
           echo "${install_dir}" >> "$GITHUB_PATH"
-          cosign version
+          "${install_dir}/cosign" version
       - name: Build, test, and package artifacts
         run: |
           docker run --rm \
