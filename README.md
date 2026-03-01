@@ -53,9 +53,19 @@ The CI pipeline enforces:
 - Each release includes:
   - `resetusb-<tag>-linux-amd64.tar.gz`
   - `resetusb-<tag>-linux-amd64.tar.gz.sha256`
-  - `resetusb-<tag>-linux-amd64.tar.gz.sig`
-  - `resetusb-<tag>-linux-amd64.tar.gz.pem`
+  - `resetusb-<tag>-linux-arm64.tar.gz`
+  - `resetusb-<tag>-linux-arm64.tar.gz.sha256`
+  - `resetusb-<tag>-linux-armv7.tar.gz`
+  - `resetusb-<tag>-linux-armv7.tar.gz.sha256`
   - `resetusb-<tag>-linux-amd64.tar.gz.bundle.json`
+  - `resetusb-<tag>-linux-arm64.tar.gz.bundle.json`
+  - `resetusb-<tag>-linux-armv7.tar.gz.bundle.json`
+
+Platform guidance:
+
+- x86/AMD: use `linux-amd64` (64-bit only).
+- Raspberry Pi 64-bit OS: use `linux-arm64`.
+- Raspberry Pi 32-bit OS: use `linux-armv7`.
 
 Verify an artifact:
 
@@ -68,8 +78,6 @@ Verify Sigstore provenance (keyless):
 ```bash
 cosign verify-blob \
   --bundle resetusb-<tag>-linux-amd64.tar.gz.bundle.json \
-  --certificate resetusb-<tag>-linux-amd64.tar.gz.pem \
-  --signature resetusb-<tag>-linux-amd64.tar.gz.sig \
   --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release\.yml@refs/tags/.*$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   resetusb-<tag>-linux-amd64.tar.gz
