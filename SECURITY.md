@@ -20,8 +20,8 @@ Include:
 
 - Root-only execution is required by design.
 - CI enforces static analysis (`cppcheck`, `scan-build`) and shell script linting (`shellcheck`).
-- Public releases are generated in GitHub Actions from signed tags and include SHA256 checksums.
-- No staging or production auto-deployment workflow exists in this repository.
+- Public releases are generated in GitHub Actions from signed tags.
+- Release artifacts include SHA256 checksums and Sigstore keyless signatures (`.sig`, `.pem`, `.bundle.json`).
 
 ## Out of Scope
 

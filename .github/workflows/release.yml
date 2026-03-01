@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -19,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -45,6 +48,49 @@ jobs:
 
           tar -C dist -czf "$archive" "${version}"
           sha256sum "$archive" > "$checksum"
+      - name: Sign release artifacts with Sigstore
+        env:
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+          archive="dist/resetusb-${version}-linux-amd64.tar.gz"
+          checksum="${archive}.sha256"
+
+          cosign sign-blob \
+            --output-signature "${archive}.sig" \
+            --output-certificate "${archive}.pem" \
+            --bundle "${archive}.bundle.json" \
+            "$archive"
+
+          cosign sign-blob \
+            --output-signature "${checksum}.sig" \
+            --output-certificate "${checksum}.pem" \
+            --bundle "${checksum}.bundle.json" \
+            "$checksum"
+      - name: Verify Sigstore signatures
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+          archive="dist/resetusb-${version}-linux-amd64.tar.gz"
+          checksum="${archive}.sha256"
+          identity_regex="^https://github\\.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@refs/tags/.*$"
+
+          cosign verify-blob \
+            --bundle "${archive}.bundle.json" \
+            --certificate "${archive}.pem" \
+            --signature "${archive}.sig" \
+            --certificate-identity-regexp "$identity_regex" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+
+          cosign verify-blob \
+            --bundle "${checksum}.bundle.json" \
+            --certificate "${checksum}.pem" \
+            --signature "${checksum}.sig" \
+            --certificate-identity-regexp "$identity_regex" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$checksum"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -58,6 +104,12 @@ jobs:
           Files:
           - resetusb-${tag}-linux-amd64.tar.gz
           - resetusb-${tag}-linux-amd64.tar.gz.sha256
+          - resetusb-${tag}-linux-amd64.tar.gz.sig
+          - resetusb-${tag}-linux-amd64.tar.gz.pem
+          - resetusb-${tag}-linux-amd64.tar.gz.bundle.json
+          - resetusb-${tag}-linux-amd64.tar.gz.sha256.sig
+          - resetusb-${tag}-linux-amd64.tar.gz.sha256.pem
+          - resetusb-${tag}-linux-amd64.tar.gz.sha256.bundle.json
           EOF
 
           if ! gh release view "$tag" >/dev/null 2>&1; then
@@ -67,4 +119,10 @@ jobs:
           gh release upload "$tag" \
             "dist/resetusb-${tag}-linux-amd64.tar.gz" \
             "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256" \
+            "dist/resetusb-${tag}-linux-amd64.tar.gz.sig" \
+            "dist/resetusb-${tag}-linux-amd64.tar.gz.pem" \
+            "dist/resetusb-${tag}-linux-amd64.tar.gz.bundle.json" \
+            "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256.sig" \
+            "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256.pem" \
+            "dist/resetusb-${tag}-linux-amd64.tar.gz.sha256.bundle.json" \
             --clobber
