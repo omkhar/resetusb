@@ -26,6 +26,8 @@ jobs:
         run: |
           docker run --rm \
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+            -e HOST_UID="$(id -u)" \
+            -e HOST_GID="$(id -g)" \
             -v "$PWD":/work \
             -w /work \
             debian:bookworm \
@@ -107,6 +109,8 @@ jobs:
               build_and_pack amd64 gcc
               build_and_pack arm64 aarch64-linux-gnu-gcc
               build_and_pack armv7 arm-linux-gnueabihf-gcc
+
+              chown -R "${HOST_UID}:${HOST_GID}" dist
             '
       - name: Sign release artifacts with Sigstore
         env:
