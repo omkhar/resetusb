@@ -69,8 +69,9 @@ lint:
 	@command -v cppcheck >/dev/null 2>&1 || \
 		{ echo "cppcheck not found" >&2; exit 1; }
 	cppcheck --enable=warning,style,performance,portability \
-		--error-exitcode=1 --suppress=missingIncludeSystem resetusb.c \
-		tests/resetusb_unit_tests.c
+		--error-exitcode=1 --suppress=missingIncludeSystem \
+		--suppress=constParameterCallback:tests/resetusb_unit_tests.c \
+		resetusb.c tests/resetusb_unit_tests.c
 	@if [ -d scripts ] && find scripts -maxdepth 1 -type f -name '*.sh' | grep -q .; then \
 		command -v shellcheck >/dev/null 2>&1 || { echo "shellcheck not found" >&2; exit 1; }; \
 		shellcheck scripts/*.sh; \
