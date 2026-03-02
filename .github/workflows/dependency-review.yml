@@ -11,6 +11,7 @@ permissions:
 jobs:
   dependency-review:
     name: dependency-review
+    if: github.repository_visibility == 'public' || vars.ENABLE_PRIVATE_DEPENDENCY_REVIEW == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Dependency review
