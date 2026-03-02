@@ -2,10 +2,15 @@
 
 ## Ground Rules
 
-- Keep changes minimal and auditable.
-- Prefer measured results over assumptions.
+- Keep changes minimal, auditable, and security-conscious.
 - Preserve safety messaging: this tool can disrupt active USB-connected systems.
-- Do not add automatic staging/production deployments in this repository.
+- Keep Linux-only assumptions explicit in code, CI, and docs.
+- Follow Linux kernel C style for source changes.
+- Do not add automatic staging/production deployment jobs in this repository.
+
+## Community Expectations
+
+By participating, you agree to follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Local Setup
 
@@ -13,38 +18,36 @@ Debian/Ubuntu:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential libusb-1.0-0-dev
+sudo apt-get install -y build-essential clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
 ```
 
-Build and test:
+## Required Local Checks
+
+Run before opening a PR:
 
 ```bash
 make clean
 make
 make test
-```
-
-## Security and Quality Checks
-
-Before opening a PR, run:
-
-```bash
-cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --suppress=missingIncludeSystem resetusb.c
-shellcheck scripts/*.sh
-```
-
-Linux static-analysis gate:
-
-```bash
+make lint
+make check-format
 scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
+make sanitize
+```
+
+Auto-format source files with:
+
+```bash
+make format
 ```
 
 ## Pull Request Expectations
 
 - Include a short problem statement and rationale.
-- Include exact test/analyzer commands run and their results.
+- Include exact commands run and summarized results.
 - Add/adjust unit tests when behavior changes.
-- Keep GitHub Actions pinned to commit hashes.
+- Keep GitHub Actions references pinned to immutable commit SHAs.
+- Keep behavior changes explicit in docs (`README.md`, `SECURITY.md`) when applicable.
 
 ## Release Process
 

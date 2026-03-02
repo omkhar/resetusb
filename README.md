@@ -41,11 +41,20 @@ Summary: reset 1 device(s), 0 failure(s)
 make test
 ```
 
+Additional contributor checks:
+
+```bash
+make lint
+make check-format
+make sanitize
+```
+
 The CI pipeline enforces:
 
-- `ci-security`: `cppcheck`, `shellcheck`, and `scan-build`
+- `ci-security`: `make lint`, `make check-format`, and `scan-build`
 - `ci-build`: Linux build with `ccache`
 - `ci-test`: unit tests with `ccache`
+- `ci-sanitize`: AddressSanitizer + UndefinedBehaviorSanitizer test run
 
 ## Public Releases
 
@@ -58,8 +67,11 @@ The CI pipeline enforces:
   - `resetusb-<tag>-linux-armv7.tar.gz`
   - `resetusb-<tag>-linux-armv7.tar.gz.sha256`
   - `resetusb-<tag>-linux-amd64.tar.gz.bundle.json`
+  - `resetusb-<tag>-linux-amd64.tar.gz.sha256.bundle.json`
   - `resetusb-<tag>-linux-arm64.tar.gz.bundle.json`
+  - `resetusb-<tag>-linux-arm64.tar.gz.sha256.bundle.json`
   - `resetusb-<tag>-linux-armv7.tar.gz.bundle.json`
+  - `resetusb-<tag>-linux-armv7.tar.gz.sha256.bundle.json`
 
 Platform guidance:
 
@@ -90,6 +102,13 @@ cosign verify-blob \
 - Security reports: see [SECURITY.md](SECURITY.md).
 - Latest security review: [docs/security-review-2026-03-01.md](docs/security-review-2026-03-01.md).
 - Development guidance: see [CONTRIBUTING.md](CONTRIBUTING.md).
+- Community expectations: see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Coding Style
+
+- C source follows Linux kernel style conventions.
+- Formatting is enforced with `.clang-format`.
+- Run `make format` before submitting style-related changes.
 
 ## License
 

@@ -23,17 +23,11 @@ jobs:
       - name: Install security tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang-tools cppcheck libusb-1.0-0-dev shellcheck
-      - name: Static analysis and script linting
+          sudo apt-get install -y build-essential clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
+      - name: Lint and format checks
         run: |
-          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --suppress=missingIncludeSystem resetusb.c
-          shopt -s nullglob
-          scripts=(scripts/*.sh)
-          if ((${#scripts[@]})); then
-            shellcheck "${scripts[@]}"
-          else
-            echo "No shell scripts to lint."
-          fi
+          make lint
+          make check-format
       - name: Clang static analyzer
         run: scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
 
@@ -47,7 +41,7 @@ jobs:
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'Makefile') }}
+          key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'resetusb.h', 'tests/resetusb_unit_tests.c', 'Makefile', '.clang-format') }}
           restore-keys: |
             resetusb-ccache-${{ runner.os }}-
       - name: Install dependencies
@@ -71,7 +65,7 @@ jobs:
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'Makefile') }}
+          key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'resetusb.h', 'tests/resetusb_unit_tests.c', 'Makefile', '.clang-format') }}
           restore-keys: |
             resetusb-ccache-${{ runner.os }}-
       - name: Install dependencies
@@ -85,3 +79,16 @@ jobs:
           make CC="ccache gcc" test
           test -x ./resetusb
           ccache --show-stats || true
+
+  ci-sanitize:
+    name: ci-sanitize
+    needs: ci-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libusb-1.0-0-dev
+      - name: Run address/undefined sanitizers
+        run: make sanitize CC=gcc
