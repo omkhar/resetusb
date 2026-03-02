@@ -9,6 +9,12 @@
 Please report suspected vulnerabilities privately through GitHub Security Advisories for this repository.
 If private reporting is not available, open an issue with minimal details and request a private follow-up channel.
 
+Maintainer response target:
+
+- Initial acknowledgment: within 3 business days
+- Status update: within 7 business days
+- Coordinated disclosure: after a fix is available or mitigation is documented
+
 Include:
 
 - Affected version or commit SHA
@@ -21,7 +27,7 @@ Include:
 - Root-only execution is required by design.
 - CI enforces static analysis (`cppcheck`, `scan-build`) and shell script linting (`shellcheck`).
 - Public releases are generated in GitHub Actions from signed tags.
-- Release artifacts include SHA256 checksums and Sigstore keyless signatures (`.sig`, `.pem`, `.bundle.json`).
+- Release artifacts include SHA256 checksums and Sigstore keyless bundles (`.bundle.json`).
 
 ## Out of Scope
 

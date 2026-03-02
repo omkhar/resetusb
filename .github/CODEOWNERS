@@ -1,0 +1,5 @@
+# Default owner for all paths.
+* @omkhar
+
+# Workflow changes require maintainer review.
+.github/workflows/* @omkhar
