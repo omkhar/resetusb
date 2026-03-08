@@ -25,8 +25,10 @@ Include:
 ## Security Posture
 
 - Root-only execution is required by design.
+- The runtime refuses mismatched real/effective UID execution contexts.
 - CI enforces static analysis (`cppcheck`, `scan-build`) and shell script linting (`shellcheck`).
-- Public releases are generated in GitHub Actions from signed tags.
+- CI secret scanning covers reachable Git history with `gitleaks`.
+- Public releases are generated in GitHub Actions from signed annotated tags that are verified against the pinned maintainer release key.
 - Release artifacts include SHA256 checksums and Sigstore keyless bundles (`.bundle.json`).
 
 ## Out of Scope

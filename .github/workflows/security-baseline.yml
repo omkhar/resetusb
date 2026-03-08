@@ -33,4 +33,8 @@ jobs:
 
       - name: Scan repository for hardcoded secrets
         run: |
-          "$(go env GOPATH)/bin/gitleaks" dir . --no-banner --redact --exit-code 1
+          "$(go env GOPATH)/bin/gitleaks" git . \
+            --log-opts="--all" \
+            --no-banner \
+            --redact \
+            --exit-code 1

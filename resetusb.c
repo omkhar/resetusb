@@ -42,7 +42,8 @@ static void sanitize_product_name(char *name)
 	}
 }
 
-int resetusb_run(const resetusb_ops *ops, uid_t euid, FILE *out, FILE *err)
+int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
+		 FILE *err)
 {
 	libusb_context *ctx = NULL;
 	libusb_device **devices = NULL;
@@ -59,7 +60,13 @@ int resetusb_run(const resetusb_ops *ops, uid_t euid, FILE *out, FILE *err)
 		return 1;
 	}
 
-	if (euid != 0) {
+	if (ruid != euid) {
+		fprintf(err, "Refusing to run with mismatched real and "
+			     "effective UIDs\n");
+		return 1;
+	}
+
+	if (ruid != 0 || euid != 0) {
 		fprintf(err, "Must be root\n");
 		return 1;
 	}
@@ -203,6 +210,6 @@ static const resetusb_ops default_ops = {
 
 int main(void)
 {
-	return resetusb_run(&default_ops, geteuid(), stdout, stderr);
+	return resetusb_run(&default_ops, getuid(), geteuid(), stdout, stderr);
 }
 #endif

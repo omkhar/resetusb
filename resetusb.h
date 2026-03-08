@@ -26,6 +26,7 @@ typedef struct resetusb_ops {
 	const char *(*libusb_error_name)(int code);
 } resetusb_ops;
 
-int resetusb_run(const resetusb_ops *ops, uid_t euid, FILE *out, FILE *err);
+int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
+		 FILE *err);
 
 #endif

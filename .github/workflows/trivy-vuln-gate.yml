@@ -22,11 +22,25 @@ jobs:
           persist-credentials: false
           show-progress: false
 
-      - name: Run Trivy vulnerability gate (HIGH,CRITICAL)
+      - name: Build release builder image
+        run: docker build -f docker/release-builder.Dockerfile -t resetusb-release-builder:trivy .
+
+      - name: Run Trivy filesystem vulnerability gate (HIGH,CRITICAL)
         uses: aquasecurity/trivy-action@97e0b3872f55f89b95b2f65b3dbab56962816478 # 0.34.2
         with:
           scan-type: fs
           scan-ref: .
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: false
+          format: table
+
+      - name: Run Trivy release-builder image gate (HIGH,CRITICAL)
+        uses: aquasecurity/trivy-action@97e0b3872f55f89b95b2f65b3dbab56962816478 # 0.34.2
+        with:
+          scan-type: image
+          image-ref: resetusb-release-builder:trivy
           vuln-type: os,library
           severity: HIGH,CRITICAL
           exit-code: "1"

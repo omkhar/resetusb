@@ -20,6 +20,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify signed release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_SIGNING_KEY_FPR: 90554248C4F7CC086BB745D0DA5A8E9F536C42FD
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$(mktemp -d)"
+          trap 'rm -rf "$GNUPGHOME"' EXIT
+
+          actual_fpr="$(
+            gpg --batch --with-colons --show-keys .github/keys/release-signing-key.asc |
+              awk -F: '/^fpr:/ {print $10; exit}'
+          )"
+
+          if [[ "$actual_fpr" != "$RELEASE_SIGNING_KEY_FPR" ]]; then
+            echo "Unexpected release signing key fingerprint: $actual_fpr" >&2
+            exit 1
+          fi
+
+          gpg --batch --import .github/keys/release-signing-key.asc
+          printf '%s:6:\n' "$RELEASE_SIGNING_KEY_FPR" | \
+            gpg --batch --import-ownertrust
+
+          git rev-parse --verify "refs/tags/${RELEASE_TAG}^{tag}" >/dev/null
+          git -c gpg.program=gpg verify-tag "$RELEASE_TAG"
       - name: Install cosign
         run: |
           set -euo pipefail
@@ -174,7 +202,7 @@ jobs:
           EOF
 
           if ! gh release view "$tag" >/dev/null 2>&1; then
-            gh release create "$tag" --verify-tag --title "resetusb ${tag}" --notes-file "$notes_file"
+            gh release create "$tag" --title "resetusb ${tag}" --notes-file "$notes_file"
           fi
 
           upload_files=()

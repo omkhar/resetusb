@@ -6,6 +6,7 @@ It is designed for operational recovery workflows where USB devices are stuck or
 ## Safety and Scope
 
 - `resetusb` requires root privileges.
+- It refuses `setuid`-style or other mismatched real/effective UID invocations.
 - It resets every enumerated USB device, including hubs.
 - This can interrupt keyboards, storage, serial devices, and USB-backed networking.
 - Use only during controlled maintenance windows or recovery procedures.
@@ -58,7 +59,7 @@ The CI pipeline enforces:
 
 ## Public Releases
 
-- Public release artifacts are published from Git tags (`v*`) via `.github/workflows/release.yml`.
+- Public release artifacts are published from signed annotated Git tags (`v*`) via `.github/workflows/release.yml`.
 - Each release includes:
   - `resetusb-<tag>-linux-amd64.tar.gz`
   - `resetusb-<tag>-linux-amd64.tar.gz.sha256`

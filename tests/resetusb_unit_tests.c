@@ -283,7 +283,7 @@ static char *read_stream(FILE *stream)
 	return buf;
 }
 
-static int run_with_capture(const resetusb_ops *ops, uid_t euid,
+static int run_with_capture(const resetusb_ops *ops, uid_t ruid, uid_t euid,
 			    char **stdout_text, char **stderr_text)
 {
 	FILE *out = tmpfile();
@@ -293,7 +293,7 @@ static int run_with_capture(const resetusb_ops *ops, uid_t euid,
 	assert(out != NULL);
 	assert(err != NULL);
 
-	rc = resetusb_run(ops, euid, out, err);
+	rc = resetusb_run(ops, ruid, euid, out, err);
 	*stdout_text = read_stream(out);
 	*stderr_text = read_stream(err);
 
@@ -308,7 +308,7 @@ static void test_requires_root(void)
 
 	char *out = NULL;
 	char *err = NULL;
-	int rc = run_with_capture(&fake_ops, 1000, &out, &err);
+	int rc = run_with_capture(&fake_ops, 1000, 1000, &out, &err);
 
 	assert(rc == 1);
 	assert(g_fake.init_calls == 0);
@@ -326,7 +326,7 @@ static void test_init_failure(void)
 
 	char *out = NULL;
 	char *err = NULL;
-	int rc = run_with_capture(&fake_ops, 0, &out, &err);
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
 
 	assert(rc == 1);
 	assert(g_fake.init_calls == 1);
@@ -347,7 +347,7 @@ static void test_successful_reset(void)
 
 	char *out = NULL;
 	char *err = NULL;
-	int rc = run_with_capture(&fake_ops, 0, &out, &err);
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
 
 	assert(rc == 0);
 	assert(g_fake.init_calls == 1);
@@ -376,7 +376,7 @@ static void test_mixed_failures_counted(void)
 
 	char *out = NULL;
 	char *err = NULL;
-	int rc = run_with_capture(&fake_ops, 0, &out, &err);
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
 
 	assert(rc == 1);
 	assert(g_fake.close_calls[0] == 0);
@@ -401,7 +401,7 @@ static void test_reset_failure_closes_handle(void)
 
 	char *out = NULL;
 	char *err = NULL;
-	int rc = run_with_capture(&fake_ops, 0, &out, &err);
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
 
 	assert(rc == 1);
 	assert(g_fake.close_calls[0] == 1);
@@ -424,7 +424,7 @@ static void test_incomplete_ops_table_rejected(void)
 
 	char *out = NULL;
 	char *err = NULL;
-	int rc = run_with_capture(&bad_ops, 0, &out, &err);
+	int rc = run_with_capture(&bad_ops, 0, 0, &out, &err);
 
 	assert(rc == 1);
 	assert(g_fake.init_calls == 0);
@@ -446,7 +446,7 @@ static void test_product_name_sanitized(void)
 
 	char *out = NULL;
 	char *err = NULL;
-	int rc = run_with_capture(&fake_ops, 0, &out, &err);
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
 
 	assert(rc == 0);
 	assert(err != NULL && strcmp(err, "") == 0);
@@ -468,7 +468,7 @@ static void test_null_device_entry_counted(void)
 
 	char *out = NULL;
 	char *err = NULL;
-	int rc = run_with_capture(&fake_ops, 0, &out, &err);
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
 
 	assert(rc == 1);
 	assert(g_fake.close_calls[0] == 1);
@@ -476,6 +476,25 @@ static void test_null_device_entry_counted(void)
 	       strstr(out, "Summary: reset 1 device(s), 1 failure(s)") != NULL);
 	assert(err != NULL &&
 	       strstr(err, "Encountered null device entry at index 1") != NULL);
+
+	free(out);
+	free(err);
+}
+
+static void test_mismatched_uids_rejected(void)
+{
+	reset_fake();
+
+	char *out = NULL;
+	char *err = NULL;
+	int rc = run_with_capture(&fake_ops, 1000, 0, &out, &err);
+
+	assert(rc == 1);
+	assert(g_fake.init_calls == 0);
+	assert(out != NULL && strcmp(out, "") == 0);
+	assert(err != NULL &&
+	       strstr(err, "Refusing to run with mismatched real and effective "
+			   "UIDs") != NULL);
 
 	free(out);
 	free(err);
@@ -503,6 +522,7 @@ int main(void)
 		 test_incomplete_ops_table_rejected);
 	run_test("product_name_sanitized", test_product_name_sanitized);
 	run_test("null_device_entry_counted", test_null_device_entry_counted);
+	run_test("mismatched_uids_rejected", test_mismatched_uids_rejected);
 
 	return 0;
 }
