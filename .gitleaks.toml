@@ -1,0 +1,14 @@
+title = "resetusb gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow the pinned public release-signing fingerprint"
+regexTarget = "match"
+paths = [
+  '''^\.github/workflows/release\.yml$''',
+]
+regexes = [
+  '''90554248C4F7CC086BB745D0DA5A8E9F536C42FD''',
+]

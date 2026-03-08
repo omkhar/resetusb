@@ -19,7 +19,8 @@ PREFIX ?= /usr
 SBINDIR ?= $(PREFIX)/sbin
 UNAME_S := $(shell uname -s)
 
-.PHONY: all clean install uninstall test lint format check-format sanitize
+.PHONY: all clean install uninstall test lint format check-format sanitize \
+	release-preflight
 
 ifeq ($(UNAME_S),Linux)
 EFFECTIVE_CFLAGS := $(CFLAGS) $(HARDEN_CFLAGS)
@@ -69,6 +70,7 @@ lint:
 	@command -v cppcheck >/dev/null 2>&1 || \
 		{ echo "cppcheck not found" >&2; exit 1; }
 	cppcheck --enable=warning,style,performance,portability \
+		--check-level=exhaustive \
 		--error-exitcode=1 --suppress=missingIncludeSystem \
 		--suppress=constParameterCallback:tests/resetusb_unit_tests.c \
 		resetusb.c tests/resetusb_unit_tests.c
@@ -84,3 +86,6 @@ clean:
 
 uninstall:
 	rm -f $(SBINDIR)/resetusb
+
+release-preflight:
+	./scripts/release-preflight.sh

@@ -33,6 +33,7 @@ make lint
 make check-format
 scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
 make sanitize
+make release-preflight
 ```
 
 Auto-format source files with:
@@ -52,5 +53,6 @@ make format
 ## Release Process
 
 - Create and push a signed annotated tag matching `v*` (for example `git tag -s v1.2.3 -m "resetusb release v1.2.3"`).
-- GitHub Actions `release.yml` builds, tests, signs artifacts with Sigstore, verifies signatures, and publishes release artifacts.
+- Run `make release-preflight` before cutting the tag.
+- GitHub Actions `release.yml` runs `release-preflight`, then builds, tests, signs artifacts with Sigstore, verifies signatures, and publishes release artifacts.
 - Do not publish binaries manually outside the release workflow.

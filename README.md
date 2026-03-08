@@ -48,6 +48,7 @@ Additional contributor checks:
 make lint
 make check-format
 make sanitize
+make release-preflight
 ```
 
 The CI pipeline enforces:
@@ -56,10 +57,12 @@ The CI pipeline enforces:
 - `ci-build`: Linux build with `ccache`
 - `ci-test`: unit tests with `ccache`
 - `ci-sanitize`: AddressSanitizer + UndefinedBehaviorSanitizer test run
+- `release-preflight`: release-gating Linux preflight, `gitleaks`, and Trivy scans
 
 ## Public Releases
 
 - Public release artifacts are published from signed annotated Git tags (`v*`) via `.github/workflows/release.yml`.
+- Releases are only published after the `release-preflight` job passes.
 - Each release includes:
   - `resetusb-<tag>-linux-amd64.tar.gz`
   - `resetusb-<tag>-linux-amd64.tar.gz.sha256`

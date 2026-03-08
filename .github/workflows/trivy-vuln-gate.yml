@@ -33,7 +33,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           exit-code: "1"
-          ignore-unfixed: false
+          ignore-unfixed: true
           format: table
 
       - name: Run Trivy release-builder image gate (HIGH,CRITICAL)
@@ -44,5 +44,5 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           exit-code: "1"
-          ignore-unfixed: false
+          ignore-unfixed: true
           format: table

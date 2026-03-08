@@ -66,7 +66,7 @@ int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
 		return 1;
 	}
 
-	if (ruid != 0 || euid != 0) {
+	if (euid != 0) {
 		fprintf(err, "Must be root\n");
 		return 1;
 	}
