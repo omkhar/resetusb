@@ -104,7 +104,6 @@ cosign verify-blob \
 - Report bugs: open a GitHub Issue with logs and reproduction steps.
 - Propose changes: open a PR and follow `.github/pull_request_template.md`.
 - Security reports: see [SECURITY.md](SECURITY.md).
-
 - Development guidance: see [CONTRIBUTING.md](CONTRIBUTING.md).
 - Community expectations: see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
