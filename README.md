@@ -1,5 +1,10 @@
 # resetusb
 
+[![CI](https://github.com/omkhar/resetusb/workflows/CI/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml)
+[![Dependency Review](https://github.com/omkhar/resetusb/workflows/Dependency%20Review/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/dependency-review.yml)
+[![Release](https://github.com/omkhar/resetusb/workflows/Release/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/release.yml)
+[![Security Baseline](https://github.com/omkhar/resetusb/workflows/Security%20Baseline/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/security-baseline.yml)
+
 `resetusb` is a Linux utility that enumerates USB devices and issues resets through `libusb`.
 It is designed for operational recovery workflows where USB devices are stuck or misbehaving.
 
