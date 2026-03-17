@@ -27,6 +27,8 @@ jobs:
         with:
           go-version: "1.25.7"
           check-latest: true
+          # This job installs a single tool and the repo has no go.mod/go.sum to cache.
+          cache: false
 
       - name: Install gitleaks
         run: GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@v8.30.0
