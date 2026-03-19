@@ -3,6 +3,7 @@
 ## Supported Platform
 
 - Linux (actively tested in CI)
+- Release artifacts are validated on Debian stable/sid, Ubuntu 24.04/devel, and Fedora stable/rawhide.
 
 ## Reporting a Vulnerability
 
@@ -27,10 +28,11 @@ Include:
 - Root-only execution is required by design.
 - The runtime refuses mismatched real/effective UID execution contexts.
 - CI enforces static analysis (`cppcheck`, `scan-build`) and shell script linting (`shellcheck`).
+- CI validates release packages and generic tarballs on stable and unstable distro channels before release publication.
 - CI secret scanning covers reachable Git history with `gitleaks`.
 - Release publication is gated by a full `release-preflight` pass before artifacts are uploaded.
 - Public releases are generated in GitHub Actions from signed annotated tags that are verified against the pinned maintainer release key.
-- Release artifacts include SHA256 checksums and Sigstore keyless bundles (`.bundle.json`).
+- Release artifacts include generic tarballs, distro-specific packages, SHA256 checksums, and Sigstore keyless bundles (`.bundle.json`).
 
 ## Out of Scope
 

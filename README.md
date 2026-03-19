@@ -63,6 +63,7 @@ The CI pipeline enforces:
 - `ci-build`: Linux build with `ccache`
 - `ci-test`: unit tests with `ccache`
 - `ci-sanitize`: AddressSanitizer + UndefinedBehaviorSanitizer test run
+- `ci-package-integration`: signed-release artifact build plus stable/unstable package and tarball smoke tests
 - `release-preflight`: release-gating Linux preflight, `gitleaks`, and Trivy scans
 - `scorecard-analysis`: OpenSSF Scorecard scan on `main`, published to GitHub code scanning and `scorecard.dev`
 
@@ -70,40 +71,72 @@ The CI pipeline enforces:
 
 - Public release artifacts are published from signed annotated Git tags (`v*`) via `.github/workflows/release.yml`.
 - Releases are only published after the `release-preflight` job passes.
-- Each release includes:
-  - `resetusb-<tag>-linux-amd64.tar.gz`
-  - `resetusb-<tag>-linux-amd64.tar.gz.sha256`
-  - `resetusb-<tag>-linux-arm64.tar.gz`
-  - `resetusb-<tag>-linux-arm64.tar.gz.sha256`
-  - `resetusb-<tag>-linux-armv7.tar.gz`
-  - `resetusb-<tag>-linux-armv7.tar.gz.sha256`
-  - `resetusb-<tag>-linux-amd64.tar.gz.bundle.json`
-  - `resetusb-<tag>-linux-amd64.tar.gz.sha256.bundle.json`
-  - `resetusb-<tag>-linux-arm64.tar.gz.bundle.json`
-  - `resetusb-<tag>-linux-arm64.tar.gz.sha256.bundle.json`
-  - `resetusb-<tag>-linux-armv7.tar.gz.bundle.json`
-  - `resetusb-<tag>-linux-armv7.tar.gz.sha256.bundle.json`
+- Each release includes generic tarballs for:
+  - `linux-amd64`
+  - `linux-arm64`
+  - `linux-armv7`
+- Each release includes distro packages for:
+  - Debian: `amd64`, `arm64`, `armhf`
+  - Ubuntu: `amd64`, `arm64`, `armhf`
+  - Fedora: `x86_64`, `aarch64`
+- Every primary artifact ships with:
+  - a SHA256 checksum (`.sha256`)
+  - a Sigstore keyless bundle for the artifact (`.bundle.json`)
+  - a Sigstore keyless bundle for the checksum (`.sha256.bundle.json`)
+
+Release validation matrix:
+
+- Debian stable and Debian sid: `amd64`, `arm64`, `armv7`
+- Ubuntu 24.04 and Ubuntu devel: `amd64`, `arm64`, `armv7`
+- Fedora stable and Fedora rawhide: `amd64`, `arm64`
 
 Platform guidance:
 
-- x86/AMD: use `linux-amd64` (64-bit only).
-- Raspberry Pi 64-bit OS: use `linux-arm64`.
-- Raspberry Pi 32-bit OS: use `linux-armv7`.
+- x86/AMD: use `linux-amd64`, `debian-amd64.deb`, `ubuntu-amd64.deb`, or `fedora-x86_64.rpm`.
+- Raspberry Pi 64-bit OS: use `linux-arm64`, `debian-arm64.deb`, `ubuntu-arm64.deb`, or `fedora-aarch64.rpm`.
+- Raspberry Pi 32-bit OS: use `linux-armv7`, `debian-armhf.deb`, or `ubuntu-armhf.deb`.
+
+Install examples:
+
+Debian:
+
+```bash
+sudo apt-get install ./resetusb-<tag>-debian-amd64.deb
+```
+
+Ubuntu:
+
+```bash
+sudo apt-get install ./resetusb-<tag>-ubuntu-amd64.deb
+```
+
+Fedora:
+
+```bash
+sudo dnf install ./resetusb-<tag>-fedora-x86_64.rpm
+```
+
+Generic tarball:
+
+```bash
+tar -xzf resetusb-<tag>-linux-amd64.tar.gz
+sudo install -m 0755 <tag>-linux-amd64/resetusb /usr/sbin/resetusb
+```
 
 Verify an artifact:
 
 ```bash
-sha256sum -c resetusb-<tag>-linux-amd64.tar.gz.sha256
+sha256sum -c resetusb-<tag>-ubuntu-amd64.deb.sha256
 ```
 
 Verify Sigstore provenance (keyless):
 
 ```bash
 cosign verify-blob \
-  --bundle resetusb-<tag>-linux-amd64.tar.gz.bundle.json \
+  --bundle resetusb-<tag>-ubuntu-amd64.deb.bundle.json \
   --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release\.yml@refs/tags/.*$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  resetusb-<tag>-linux-amd64.tar.gz
+  resetusb-<tag>-ubuntu-amd64.deb
 ```
 
 ## Collaboration

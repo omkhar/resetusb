@@ -37,6 +37,8 @@
 *.hex
 resetusb
 resetusb-tests
+build/
+dist/
 
 # Debug files
 *.dSYM/

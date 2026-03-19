@@ -68,6 +68,16 @@ docker run --rm \
 		make sanitize CC=gcc
 	'
 
+echo "==> Building release artifacts"
+docker run --rm \
+	-v "${REPO_ROOT}":/work \
+	-w /work \
+	"${BUILDER_IMAGE}" \
+	bash -lc './scripts/build-release-artifacts.sh'
+
+echo "==> Running stable and unstable package integration tests"
+"${REPO_ROOT}/scripts/test-package-integration.sh"
+
 echo "==> Running gitleaks history scan"
 docker run --rm \
 	-v "${REPO_ROOT}":/repo \

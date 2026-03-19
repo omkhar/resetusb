@@ -100,3 +100,28 @@ jobs:
           sudo apt-get install -y build-essential libusb-1.0-0-dev
       - name: Run address/undefined sanitizers
         run: make sanitize CC=gcc
+
+  ci-package-integration:
+    name: ci-package-integration
+    needs: ci-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+      - name: Build release builder image
+        run: docker build -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
+      - name: Build release artifacts
+        run: |
+          docker run --rm \
+            -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+            -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
+            -v "$PWD":/work \
+            -w /work \
+            "resetusb-release-builder:${GITHUB_SHA}" \
+            bash -lc './scripts/build-release-artifacts.sh'
+      - name: Run stable and unstable package integration tests
+        run: ./scripts/test-package-integration.sh

@@ -26,6 +26,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
       - name: Run release preflight
         run: ./scripts/release-preflight.sh
 
@@ -44,9 +46,11 @@ jobs:
           RELEASE_SIGNING_KEY_FPR: 90554248C4F7CC086BB745D0DA5A8E9F536C42FD
         run: |
           set -euo pipefail
-          export GNUPGHOME="$(mktemp -d)"
+          GNUPGHOME="$(mktemp -d)"
+          export GNUPGHOME
           trap 'rm -rf "$GNUPGHOME"' EXIT
 
+          actual_fpr=
           actual_fpr="$(
             gpg --batch --with-colons --show-keys .github/keys/release-signing-key.asc |
               awk -F: '/^fpr:/ {print $10; exit}'
@@ -85,111 +89,43 @@ jobs:
       - name: Build release builder image
         run: docker build -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
 
-      - name: Build, test, and package artifacts
+      - name: Build release artifacts
         run: |
           docker run --rm \
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
-            -e HOST_UID="$(id -u)" \
-            -e HOST_GID="$(id -g)" \
+            -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
             -v "$PWD":/work \
             -w /work \
             "resetusb-release-builder:${GITHUB_SHA}" \
-            bash -lc '
-              set -euo pipefail
-              expect_non_root_error() {
-                local log_file="$1"
-                shift
-                set +e
-                runuser -u nobody -- "$@" > /dev/null 2>"$log_file"
-                rc=$?
-                set -e
-                if [[ $rc -eq 0 ]]; then
-                  echo "Expected non-zero exit for non-root invocation: $*" >&2
-                  exit 1
-                fi
-                grep -q "Must be root" "$log_file"
-              }
-
-              # Native amd64 build + tests + runtime validation.
-              make clean
-              make CC=gcc
-              make CC=gcc test
-              expect_non_root_error /tmp/resetusb-amd64.log ./resetusb
-
-              # Raspberry Pi 64-bit target (arm64) build + emulated tests + runtime validation.
-              make clean
-              make CC=aarch64-linux-gnu-gcc resetusb-tests resetusb
-              qemu-aarch64-static -L /usr/aarch64-linux-gnu ./resetusb-tests
-              expect_non_root_error /tmp/resetusb-arm64.log qemu-aarch64-static -L /usr/aarch64-linux-gnu ./resetusb
-
-              # Raspberry Pi 32-bit target (armv7/armhf) build + emulated tests + runtime validation.
-              make clean
-              make CC=arm-linux-gnueabihf-gcc resetusb-tests resetusb
-              qemu-arm-static -L /usr/arm-linux-gnueabihf ./resetusb-tests
-              expect_non_root_error /tmp/resetusb-armv7.log qemu-arm-static -L /usr/arm-linux-gnueabihf ./resetusb
-
-              version="${GITHUB_REF_NAME}"
-              rm -rf dist
-              mkdir -p dist
-
-              build_and_pack() {
-                local arch="$1"
-                local cc="$2"
-                local stage_dir="dist/${version}-linux-${arch}"
-                local archive="dist/resetusb-${version}-linux-${arch}.tar.gz"
-
-                make clean
-                make CC="$cc"
-
-                rm -rf "$stage_dir"
-                mkdir -p "$stage_dir"
-
-                install -m 0755 resetusb "$stage_dir/resetusb"
-                install -m 0644 README.md "$stage_dir/README.md"
-                install -m 0644 LICENSE "$stage_dir/LICENSE"
-
-                tar -C dist -czf "$archive" "${version}-linux-${arch}"
-                sha256sum "$archive" > "${archive}.sha256"
-              }
-
-              build_and_pack amd64 gcc
-              build_and_pack arm64 aarch64-linux-gnu-gcc
-              build_and_pack armv7 arm-linux-gnueabihf-gcc
-
-              chown -R "${HOST_UID}:${HOST_GID}" dist
-            '
+            bash -lc './scripts/build-release-artifacts.sh'
       - name: Sign release artifacts with Sigstore
         env:
           COSIGN_YES: "true"
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME}"
           shopt -s nullglob
 
-          for archive in dist/resetusb-"${version}"-linux-*.tar.gz; do
-            checksum="${archive}.sha256"
-            cosign sign-blob --bundle "${archive}.bundle.json" "$archive"
-            cosign sign-blob --bundle "${checksum}.bundle.json" "$checksum"
+          for artifact in dist/*; do
+            if [[ ! -f "$artifact" || "$artifact" == *.bundle.json ]]; then
+              continue
+            fi
+            cosign sign-blob --bundle "${artifact}.bundle.json" "$artifact"
           done
       - name: Verify Sigstore signatures
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME}"
           identity_regex="^https://github\\.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@refs/tags/.*$"
           shopt -s nullglob
 
-          for archive in dist/resetusb-"${version}"-linux-*.tar.gz; do
-            checksum="${archive}.sha256"
+          for artifact in dist/*; do
+            if [[ ! -f "$artifact" || "$artifact" == *.bundle.json ]]; then
+              continue
+            fi
             cosign verify-blob \
-              --bundle "${archive}.bundle.json" \
+              --bundle "${artifact}.bundle.json" \
               --certificate-identity-regexp "$identity_regex" \
               --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              "$archive"
-            cosign verify-blob \
-              --bundle "${checksum}.bundle.json" \
-              --certificate-identity-regexp "$identity_regex" \
-              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              "$checksum"
+              "$artifact"
           done
       - name: Publish GitHub release
         env:
@@ -198,35 +134,20 @@ jobs:
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
           notes_file="$(mktemp)"
+          mapfile -t files < <(find dist -maxdepth 1 -type f -printf '%f\n' | sort)
+
           cat >"$notes_file" <<EOF
           Automated public release artifact.
 
           Files:
-          - resetusb-${tag}-linux-amd64.tar.gz
-          - resetusb-${tag}-linux-amd64.tar.gz.sha256
-          - resetusb-${tag}-linux-arm64.tar.gz
-          - resetusb-${tag}-linux-arm64.tar.gz.sha256
-          - resetusb-${tag}-linux-armv7.tar.gz
-          - resetusb-${tag}-linux-armv7.tar.gz.sha256
-          - resetusb-${tag}-linux-amd64.tar.gz.bundle.json
-          - resetusb-${tag}-linux-amd64.tar.gz.sha256.bundle.json
-          - resetusb-${tag}-linux-arm64.tar.gz.bundle.json
-          - resetusb-${tag}-linux-arm64.tar.gz.sha256.bundle.json
-          - resetusb-${tag}-linux-armv7.tar.gz.bundle.json
-          - resetusb-${tag}-linux-armv7.tar.gz.sha256.bundle.json
           EOF
+
+          for file in "${files[@]}"; do
+            printf -- '          - %s\n' "$file" >>"$notes_file"
+          done
 
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --title "resetusb ${tag}" --notes-file "$notes_file"
           fi
 
-          upload_files=()
-          for file in \
-            dist/resetusb-"${tag}"-linux-*.tar.gz \
-            dist/resetusb-"${tag}"-linux-*.tar.gz.sha256 \
-            dist/resetusb-"${tag}"-linux-*.tar.gz.bundle.json \
-            dist/resetusb-"${tag}"-linux-*.tar.gz.sha256.bundle.json; do
-            upload_files+=("$file")
-          done
-
-          gh release upload "$tag" "${upload_files[@]}" --clobber
+          gh release upload "$tag" dist/* --clobber

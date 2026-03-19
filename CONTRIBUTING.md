@@ -54,5 +54,9 @@ make format
 
 - Create and push a signed annotated tag matching `v*` (for example `git tag -s v1.2.3 -m "resetusb release v1.2.3"`).
 - Run `make release-preflight` before cutting the tag.
-- GitHub Actions `release.yml` runs `release-preflight`, then builds, tests, signs artifacts with Sigstore, verifies signatures, and publishes release artifacts.
+- GitHub Actions `release.yml` runs `release-preflight`, then builds generic tarballs plus Debian/Ubuntu/Fedora packages, signs each release artifact with Sigstore, verifies the signatures, and publishes the release.
+- Release packaging is validated against stable and unstable distro channels before publication:
+  - Debian stable and sid on `amd64`, `arm64`, and `armv7`
+  - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`
+  - Fedora stable and rawhide on `amd64` and `arm64`
 - Do not publish binaries manually outside the release workflow.

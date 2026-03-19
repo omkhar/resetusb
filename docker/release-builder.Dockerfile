@@ -7,7 +7,8 @@ RUN set -eux; \
     dpkg --add-architecture armhf; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-      build-essential \
+      dpkg-dev \
+      gcc \
       gcc-aarch64-linux-gnu \
       gcc-arm-linux-gnueabihf \
       libc6-dev-arm64-cross \
@@ -15,6 +16,8 @@ RUN set -eux; \
       libusb-1.0-0-dev \
       libusb-1.0-0-dev:arm64 \
       libusb-1.0-0-dev:armhf \
+      make \
       pkg-config \
-      qemu-user-static; \
+      qemu-user \
+      rpm; \
     rm -rf /var/lib/apt/lists/*
