@@ -255,7 +255,7 @@ EOF
 
 	rpmbuild --quiet \
 		--define "_topdir ${rpm_root}" \
-		--target "${rpm_arch}" \
+		--buildarch "${rpm_arch}" \
 		-bb "${spec_path}"
 
 	built_rpm="$(find "${rpm_root}/RPMS" -type f -name '*.rpm' | head -n 1)"
