@@ -81,7 +81,7 @@ The CI pipeline enforces:
 - Each release includes distro packages for:
   - Debian: `amd64`, `arm64`, `armhf`
   - Ubuntu: `amd64`, `arm64`, `armhf`
-  - Fedora: `x86_64`, `aarch64`
+  - Fedora: `x86_64`
 - A minimal GHCR container package is also published as `ghcr.io/omkhar/resetusb:<ref>`.
 - Every primary artifact ships with:
   - a SHA256 checksum (`.sha256`)
@@ -92,12 +92,12 @@ Release validation matrix:
 
 - Debian stable and Debian sid: `amd64`, `arm64`, `armv7`
 - Ubuntu 24.04 and Ubuntu devel: `amd64`, `arm64`, `armv7`
-- Fedora stable and Fedora rawhide: `amd64`, `arm64`
+- Fedora stable and Fedora rawhide: `amd64`
 
 Platform guidance:
 
 - x86/AMD: use `linux-amd64`, `debian-amd64.deb`, `ubuntu-amd64.deb`, or `fedora-x86_64.rpm`.
-- Raspberry Pi 64-bit OS: use `linux-arm64`, `debian-arm64.deb`, `ubuntu-arm64.deb`, or `fedora-aarch64.rpm`.
+- Raspberry Pi 64-bit OS: use `linux-arm64`, `debian-arm64.deb`, or `ubuntu-arm64.deb`.
 - Raspberry Pi 32-bit OS: use `linux-armv7`, `debian-armhf.deb`, or `ubuntu-armhf.deb`.
 
 Install examples:

@@ -302,7 +302,6 @@ main() {
 	create_deb_package ubuntu armv7
 
 	create_rpm_package amd64
-	create_rpm_package arm64
 
 	write_checksums
 

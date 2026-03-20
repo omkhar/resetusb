@@ -152,7 +152,7 @@ main() {
 				"ubuntu:$([[ "${channel}" == stable ]] && echo 24.04 || echo devel)"
 		done
 
-		for arch in amd64 arm64; do
+		for arch in amd64; do
 			if [[ " ${PACKAGE_TEST_ARCHES} " != *" ${arch} "* ]]; then
 				continue
 			fi
