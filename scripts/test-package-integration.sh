@@ -152,13 +152,10 @@ main() {
 				"ubuntu:$([[ "${channel}" == stable ]] && echo 24.04 || echo devel)"
 		done
 
-		for arch in amd64 arm64; do
-			if [[ " ${PACKAGE_TEST_ARCHES} " != *" ${arch} "* ]]; then
-				continue
-			fi
-			run_rpm_test "${channel}" "${arch}" \
+		if [[ " ${PACKAGE_TEST_ARCHES} " == *" amd64 "* ]]; then
+			run_rpm_test "${channel}" amd64 \
 				"fedora:$([[ "${channel}" == stable ]] && echo latest || echo rawhide)"
-		done
+		fi
 	done
 }
 

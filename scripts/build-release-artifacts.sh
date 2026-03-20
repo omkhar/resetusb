@@ -227,7 +227,6 @@ Release: 1
 Summary: Reset enumerated USB devices from Linux
 License: Apache-2.0
 URL: ${HOMEPAGE}
-BuildArch: ${rpm_arch}
 Requires: libusb1
 Source0: resetusb
 Source1: README.md
@@ -303,7 +302,6 @@ main() {
 	create_deb_package ubuntu armv7
 
 	create_rpm_package amd64
-	create_rpm_package arm64
 
 	write_checksums
 

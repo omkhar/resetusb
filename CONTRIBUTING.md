@@ -58,5 +58,5 @@ make format
 - Release packaging is validated against stable and unstable distro channels before publication:
   - Debian stable and sid on `amd64`, `arm64`, and `armv7`
   - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`
-  - Fedora stable and rawhide on `amd64` and `arm64`
+  - Fedora stable and rawhide on `amd64`
 - Do not publish binaries manually outside the release workflow.

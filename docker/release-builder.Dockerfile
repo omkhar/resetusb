@@ -8,9 +8,11 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
       dpkg-dev \
+      file \
       gcc \
       gcc-aarch64-linux-gnu \
       gcc-arm-linux-gnueabihf \
+      libc6-dev \
       libc6-dev-arm64-cross \
       libc6-dev-armhf-cross \
       libusb-1.0-0-dev \
