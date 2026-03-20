@@ -30,7 +30,8 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> Building release builder image"
-docker build -f "${REPO_ROOT}/docker/release-builder.Dockerfile" \
+docker build --platform=linux/amd64 \
+	-f "${REPO_ROOT}/docker/release-builder.Dockerfile" \
 	-t "${BUILDER_IMAGE}" "${REPO_ROOT}"
 
 cat >"${tmp_dockerfile}" <<EOF
@@ -48,10 +49,11 @@ RUN set -eux; \
 EOF
 
 echo "==> Building release preflight image"
-docker build -f "${tmp_dockerfile}" -t "${PREFLIGHT_IMAGE}" "${REPO_ROOT}"
+docker build --platform=linux/amd64 \
+	-f "${tmp_dockerfile}" -t "${PREFLIGHT_IMAGE}" "${REPO_ROOT}"
 
 echo "==> Running Linux release preflight"
-docker run --rm \
+docker run --rm --platform=linux/amd64 \
 	-v "${REPO_ROOT}":/work \
 	-w /work \
 	"${PREFLIGHT_IMAGE}" \
@@ -69,7 +71,7 @@ docker run --rm \
 	'
 
 echo "==> Building release artifacts"
-docker run --rm \
+docker run --rm --platform=linux/amd64 \
 	-e GITHUB_SHA="${GITHUB_SHA:-}" \
 	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
