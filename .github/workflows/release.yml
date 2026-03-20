@@ -87,11 +87,11 @@ jobs:
           echo "${install_dir}" >> "$GITHUB_PATH"
           "${install_dir}/cosign" version
       - name: Build release builder image
-        run: docker build -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
+        run: docker build --platform=linux/amd64 -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
 
       - name: Build release artifacts
         run: |
-          docker run --rm \
+          docker run --rm --platform=linux/amd64 \
             -e GITHUB_SHA="${GITHUB_SHA}" \
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
             -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
