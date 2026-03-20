@@ -70,6 +70,9 @@ docker run --rm \
 
 echo "==> Building release artifacts"
 docker run --rm \
+	-e GITHUB_SHA="${GITHUB_SHA:-}" \
+	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
+	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
 	-v "${REPO_ROOT}":/work \
 	-w /work \
 	"${BUILDER_IMAGE}" \

@@ -13,7 +13,8 @@ LDLIBS += -lusb-1.0
 
 UNIT_TEST_BIN := resetusb-tests
 UNIT_TEST_SRC := tests/resetusb_unit_tests.c
-FORMAT_SRCS := resetusb.c resetusb.h tests/resetusb_unit_tests.c
+FORMAT_SRCS := resetusb.c resetusb.h tests/resetusb_unit_tests.c \
+	tests/resetusb_sanitize_fuzzer.c
 
 PREFIX ?= /usr
 SBINDIR ?= $(PREFIX)/sbin

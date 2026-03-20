@@ -64,6 +64,9 @@ The CI pipeline enforces:
 - `ci-test`: unit tests with `ccache`
 - `ci-sanitize`: AddressSanitizer + UndefinedBehaviorSanitizer test run
 - `ci-package-integration`: signed-release artifact build plus stable/unstable package and tarball smoke tests
+- `package-publish`: publishes a minimal GHCR container package from `main` and release tags
+- `pr-fuzzing`: ClusterFuzzLite presubmit fuzzing for pull requests
+- `batch-fuzzing`: scheduled ClusterFuzzLite batch fuzzing
 - `release-preflight`: release-gating Linux preflight, `gitleaks`, and Trivy scans
 - `scorecard-analysis`: OpenSSF Scorecard scan on `main`, published to GitHub code scanning and `scorecard.dev`
 
@@ -79,10 +82,11 @@ The CI pipeline enforces:
   - Debian: `amd64`, `arm64`, `armhf`
   - Ubuntu: `amd64`, `arm64`, `armhf`
   - Fedora: `x86_64`, `aarch64`
+- A minimal GHCR container package is also published as `ghcr.io/omkhar/resetusb:<ref>`.
 - Every primary artifact ships with:
   - a SHA256 checksum (`.sha256`)
-  - a Sigstore keyless bundle for the artifact (`.bundle.json`)
-  - a Sigstore keyless bundle for the checksum (`.sha256.bundle.json`)
+  - a Sigstore keyless bundle for the artifact (`.sigstore.json`)
+  - a Sigstore keyless bundle for the checksum (`.sha256.sigstore.json`)
 
 Release validation matrix:
 
@@ -133,7 +137,7 @@ Verify Sigstore provenance (keyless):
 
 ```bash
 cosign verify-blob \
-  --bundle resetusb-<tag>-ubuntu-amd64.deb.bundle.json \
+  --bundle resetusb-<tag>-ubuntu-amd64.deb.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release\.yml@refs/tags/.*$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   resetusb-<tag>-ubuntu-amd64.deb

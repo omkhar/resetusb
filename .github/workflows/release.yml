@@ -6,10 +6,7 @@ on:
       - "v*"
   workflow_dispatch:
 
-permissions:
-  actions: read
-  contents: write
-  id-token: write
+permissions: read-all
 
 concurrency:
   group: release-${{ github.ref }}
@@ -35,6 +32,9 @@ jobs:
     name: release-build
     needs: release-preflight
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -92,6 +92,7 @@ jobs:
       - name: Build release artifacts
         run: |
           docker run --rm \
+            -e GITHUB_SHA="${GITHUB_SHA}" \
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
             -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
             -v "$PWD":/work \
@@ -106,10 +107,10 @@ jobs:
           shopt -s nullglob
 
           for artifact in dist/*; do
-            if [[ ! -f "$artifact" || "$artifact" == *.bundle.json ]]; then
+            if [[ ! -f "$artifact" || "$artifact" == *.sigstore.json ]]; then
               continue
             fi
-            cosign sign-blob --bundle "${artifact}.bundle.json" "$artifact"
+            cosign sign-blob --bundle "${artifact}.sigstore.json" "$artifact"
           done
       - name: Verify Sigstore signatures
         run: |
@@ -118,11 +119,11 @@ jobs:
           shopt -s nullglob
 
           for artifact in dist/*; do
-            if [[ ! -f "$artifact" || "$artifact" == *.bundle.json ]]; then
+            if [[ ! -f "$artifact" || "$artifact" == *.sigstore.json ]]; then
               continue
             fi
             cosign verify-blob \
-              --bundle "${artifact}.bundle.json" \
+              --bundle "${artifact}.sigstore.json" \
               --certificate-identity-regexp "$identity_regex" \
               --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
               "$artifact"

@@ -117,6 +117,7 @@ jobs:
       - name: Build release artifacts
         run: |
           docker run --rm \
+            -e GITHUB_SHA="${GITHUB_SHA}" \
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
             -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
             -v "$PWD":/work \

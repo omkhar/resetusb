@@ -7,7 +7,9 @@
 
 ## Reporting a Vulnerability
 
-Please report suspected vulnerabilities privately through GitHub Security Advisories for this repository.
+Please report suspected vulnerabilities privately through GitHub Security Advisories for this repository:
+https://github.com/omkhar/resetusb/security/advisories/new
+
 If private reporting is not available, open an issue with minimal details and request a private follow-up channel.
 
 Maintainer response target:
@@ -29,10 +31,11 @@ Include:
 - The runtime refuses mismatched real/effective UID execution contexts.
 - CI enforces static analysis (`cppcheck`, `scan-build`) and shell script linting (`shellcheck`).
 - CI validates release packages and generic tarballs on stable and unstable distro channels before release publication.
+- ClusterFuzzLite provides presubmit and scheduled fuzzing coverage for input sanitization paths.
 - CI secret scanning covers reachable Git history with `gitleaks`.
 - Release publication is gated by a full `release-preflight` pass before artifacts are uploaded.
 - Public releases are generated in GitHub Actions from signed annotated tags that are verified against the pinned maintainer release key.
-- Release artifacts include generic tarballs, distro-specific packages, SHA256 checksums, and Sigstore keyless bundles (`.bundle.json`).
+- Release artifacts include generic tarballs, distro-specific packages, SHA256 checksums, and Sigstore keyless bundles (`.sigstore.json`).
 
 ## Out of Scope
 

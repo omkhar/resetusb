@@ -9,7 +9,22 @@ REPO_ROOT="$(
 	cd -- "${SCRIPT_DIR}/.." && pwd
 )"
 
-SHORT_SHA="$(git -C "${REPO_ROOT}" rev-parse --short=12 HEAD)"
+resolve_short_sha() {
+	if [[ -n "${GITHUB_SHA:-}" ]]; then
+		printf '%s\n' "${GITHUB_SHA:0:12}"
+		return
+	fi
+
+	if command -v git >/dev/null 2>&1 &&
+		git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+		git -C "${REPO_ROOT}" rev-parse --short=12 HEAD
+		return
+	fi
+
+	printf '%s\n' "unknown"
+}
+
+SHORT_SHA="$(resolve_short_sha)"
 REF_TYPE="${GITHUB_REF_TYPE:-}"
 ARTIFACT_VERSION_OVERRIDE="${ARTIFACT_VERSION:-}"
 PACKAGE_VERSION_OVERRIDE="${PACKAGE_VERSION:-}"
