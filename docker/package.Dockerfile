@@ -5,9 +5,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-      gcc \
-      libusb-1.0-0-dev \
-      make; \
+      build-essential \
+      libusb-1.0-0-dev; \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
