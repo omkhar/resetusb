@@ -73,7 +73,7 @@ run_deb_test() {
 			test -x /usr/sbin/resetusb
 			useradd -m tester
 			set +e
-			su -s /bin/sh tester -c /usr/sbin/resetusb >/tmp/pkg.out 2>/tmp/pkg.err
+			su -s /bin/sh -c /usr/sbin/resetusb tester >/tmp/pkg.out 2>/tmp/pkg.err
 			rc=$?
 			set -e
 			test "$rc" -ne 0
@@ -84,7 +84,7 @@ run_deb_test() {
 			binary="$(find /tmp/tarball -type f -name resetusb | head -n 1)"
 			test -x "$binary"
 			set +e
-			su -s /bin/sh tester -c "$binary" >/tmp/tar.out 2>/tmp/tar.err
+			su -s /bin/sh -c "$binary" tester >/tmp/tar.out 2>/tmp/tar.err
 			rc=$?
 			set -e
 			test "$rc" -ne 0
@@ -112,11 +112,11 @@ run_rpm_test() {
 		-w /work \
 		"${image}" \
 		sh -euxc '
-			dnf install -y shadow-utils ./dist/'"$(basename "${package_file}")"'
+			dnf install -y shadow-utils util-linux ./dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
 			useradd -m tester
 			set +e
-			su -s /bin/sh tester -c /usr/sbin/resetusb >/tmp/pkg.out 2>/tmp/pkg.err
+			su -s /bin/sh -c /usr/sbin/resetusb tester >/tmp/pkg.out 2>/tmp/pkg.err
 			rc=$?
 			set -e
 			test "$rc" -ne 0
@@ -127,7 +127,7 @@ run_rpm_test() {
 			binary="$(find /tmp/tarball -type f -name resetusb | head -n 1)"
 			test -x "$binary"
 			set +e
-			su -s /bin/sh tester -c "$binary" >/tmp/tar.out 2>/tmp/tar.err
+			su -s /bin/sh -c "$binary" tester >/tmp/tar.out 2>/tmp/tar.err
 			rc=$?
 			set -e
 			test "$rc" -ne 0
