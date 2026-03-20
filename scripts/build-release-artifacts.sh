@@ -227,7 +227,6 @@ Release: 1
 Summary: Reset enumerated USB devices from Linux
 License: Apache-2.0
 URL: ${HOMEPAGE}
-BuildArch: ${rpm_arch}
 Requires: libusb1
 Source0: resetusb
 Source1: README.md
@@ -255,7 +254,7 @@ EOF
 
 	rpmbuild --quiet \
 		--define "_topdir ${rpm_root}" \
-		--buildarch "${rpm_arch}" \
+		--target "${rpm_arch}" \
 		-bb "${spec_path}"
 
 	built_rpm="$(find "${rpm_root}/RPMS" -type f -name '*.rpm' | head -n 1)"
