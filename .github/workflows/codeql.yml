@@ -9,14 +9,20 @@ on:
     - cron: "23 3 * * 1"
   workflow_dispatch:
 
-permissions: read-all
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   analyze:
     name: analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
-      security-events: write
+      actions: read # Resolve workflow metadata when analyzing GitHub Actions definitions.
+      contents: read # Check out repository contents for CodeQL analysis.
+      security-events: write # Upload CodeQL SARIF results to code scanning.
     strategy:
       fail-fast: false
       matrix:

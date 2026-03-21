@@ -5,8 +5,19 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: "docker"
     directory: "/docker"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: "docker"
+    directory: "/.clusterfuzzlite"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
