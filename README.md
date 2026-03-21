@@ -1,13 +1,27 @@
 # resetusb
 
-[![CI](https://github.com/omkhar/resetusb/workflows/CI/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml)
-[![Dependency Review](https://github.com/omkhar/resetusb/workflows/Dependency%20Review/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/dependency-review.yml)
-[![Release](https://github.com/omkhar/resetusb/workflows/Release/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/release.yml)
-[![Security Baseline](https://github.com/omkhar/resetusb/workflows/Security%20Baseline/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/security-baseline.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/omkhar/resetusb/badge)](https://scorecard.dev/viewer/?uri=github.com/omkhar/resetusb)
 
 `resetusb` is a Linux utility that enumerates USB devices and issues resets through `libusb`.
 It is designed for operational recovery workflows where USB devices are stuck or misbehaving.
+
+## Actions
+
+Current GitHub Actions workflow status:
+
+- [CI](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml): [![CI](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml)
+- [ClusterFuzzLite Batch](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml): [![ClusterFuzzLite Batch](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml)
+- [ClusterFuzzLite PR](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-pr.yml): [![ClusterFuzzLite PR](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-pr.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-pr.yml)
+- [CodeQL (codeql.yml)](https://github.com/omkhar/resetusb/actions/workflows/codeql.yml): [![CodeQL (codeql.yml)](https://github.com/omkhar/resetusb/actions/workflows/codeql.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/codeql.yml)
+- [CodeQL (dynamic/github-code-scanning/codeql)](https://github.com/omkhar/resetusb/actions/workflows/dynamic/github-code-scanning/codeql): [![CodeQL (dynamic/github-code-scanning/codeql)](https://github.com/omkhar/resetusb/actions/workflows/dynamic/github-code-scanning/codeql/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/dynamic/github-code-scanning/codeql)
+- [Dependabot Updates](https://github.com/omkhar/resetusb/actions/workflows/dynamic/dependabot/dependabot-updates): [![Dependabot Updates](https://github.com/omkhar/resetusb/actions/workflows/dynamic/dependabot/dependabot-updates/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/dynamic/dependabot/dependabot-updates)
+- [Dependency Review](https://github.com/omkhar/resetusb/actions/workflows/dependency-review.yml): [![Dependency Review](https://github.com/omkhar/resetusb/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/dependency-review.yml)
+- [OSV Scanner](https://github.com/omkhar/resetusb/actions/workflows/osv-scanner.yml): [![OSV Scanner](https://github.com/omkhar/resetusb/actions/workflows/osv-scanner.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/osv-scanner.yml)
+- [Package Publish](https://github.com/omkhar/resetusb/actions/workflows/package-publish.yml): [![Package Publish](https://github.com/omkhar/resetusb/actions/workflows/package-publish.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/package-publish.yml)
+- [Release](https://github.com/omkhar/resetusb/actions/workflows/release.yml): [![Release](https://github.com/omkhar/resetusb/actions/workflows/release.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/release.yml)
+- [Scorecard](https://github.com/omkhar/resetusb/actions/workflows/scorecard.yml): [![Scorecard](https://github.com/omkhar/resetusb/actions/workflows/scorecard.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/scorecard.yml)
+- [Security Baseline](https://github.com/omkhar/resetusb/actions/workflows/security-baseline.yml): [![Security Baseline](https://github.com/omkhar/resetusb/actions/workflows/security-baseline.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/security-baseline.yml)
+- [zizmor](https://github.com/omkhar/resetusb/actions/workflows/zizmor.yml): [![zizmor](https://github.com/omkhar/resetusb/actions/workflows/zizmor.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/zizmor.yml)
 
 ## Safety and Scope
 
