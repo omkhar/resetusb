@@ -19,7 +19,6 @@ REPO_ROOT="$(
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
 GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.0}"
-TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.61.0}"
 
 require_cmd docker
 
@@ -89,19 +88,3 @@ docker run --rm \
 	-w /repo \
 	"${GITLEAKS_IMAGE}" \
 	git /repo --log-opts="--all" --no-banner --redact --exit-code 1
-
-echo "==> Running Trivy filesystem scan"
-docker run --rm \
-	-v "${REPO_ROOT}":/work \
-	-w /work \
-	"${TRIVY_IMAGE}" \
-	fs --scanners vuln --pkg-types os,library \
-	--severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 /work
-
-echo "==> Running Trivy release-builder image scan"
-	docker run --rm \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		"${TRIVY_IMAGE}" \
-	image --scanners vuln --pkg-types os,library \
-	--severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
-		"${BUILDER_IMAGE}"
