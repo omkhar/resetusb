@@ -1,6 +1,5 @@
 version: 2
 updates:
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -8,5 +7,10 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/docker"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directory: "/.clusterfuzzlite"
     schedule:
       interval: "daily"
