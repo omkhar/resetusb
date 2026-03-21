@@ -1,6 +1,3 @@
-# Default owner for all paths.
+# Single-maintainer default: all changes require the repository owner's review.
 * @omkhar
-
-# Workflow changes require maintainer review.
-.github/workflows/* @omkhar
-.github/keys/* @omkhar
+/.github/CODEOWNERS @omkhar
