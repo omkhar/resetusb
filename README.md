@@ -64,10 +64,11 @@ The CI pipeline enforces:
 - `ci-test`: unit tests with `ccache`
 - `ci-sanitize`: AddressSanitizer + UndefinedBehaviorSanitizer test run
 - `ci-package-integration`: signed-release artifact build plus stable/unstable package and tarball smoke tests
+- `osv-scanner`: OSV dependency vulnerability scan for pull requests and pushes to `main`
 - `package-publish`: publishes a minimal GHCR container package from `main` and release tags
 - `pr-fuzzing`: ClusterFuzzLite presubmit fuzzing for pull requests
 - `batch-fuzzing`: scheduled ClusterFuzzLite batch fuzzing
-- `release-preflight`: release-gating Linux preflight, `gitleaks`, and Trivy scans
+- `release-preflight`: release-gating Linux preflight and `gitleaks` scan
 - `scorecard-analysis`: OpenSSF Scorecard scan on `main`, published to GitHub code scanning and `scorecard.dev`
 
 ## Public Releases
