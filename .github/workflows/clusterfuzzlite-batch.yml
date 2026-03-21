@@ -5,14 +5,18 @@ on:
     - cron: "17 5 * * 1"
   workflow_dispatch:
 
-permissions: read-all
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   batch-fuzzing:
     name: batch-fuzzing
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read # Check out the repository and read fuzz targets from source.
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

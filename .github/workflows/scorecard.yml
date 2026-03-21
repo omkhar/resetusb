@@ -7,15 +7,20 @@ on:
     - cron: "30 1 * * 6"
   workflow_dispatch:
 
-permissions: read-all
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   analysis:
     name: scorecard-analysis
     runs-on: ubuntu-latest
     permissions:
-      security-events: write
-      id-token: write
+      contents: read # Check out repository contents for Scorecard analysis.
+      security-events: write # Upload the generated SARIF results to code scanning.
+      id-token: write # Publish Scorecard results with OIDC-backed identity.
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
