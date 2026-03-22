@@ -8,18 +8,18 @@ resetusb \- reset all enumerated USB devices on Linux
 enumerates USB devices through
 .BR libusb (3)
 and issues a reset to every device it can open.
-It is intended for controlled recovery operations when USB devices are stuck,
-misbehaving, or need to be reprobed by the kernel.
+Use it during maintenance or recovery when a USB device stops responding and
+needs to be reprobed by the kernel.
 .PP
-This utility has no command-line options.
-When invoked, it attempts to reset every enumerated USB device, including hubs.
-That can interrupt keyboards, storage devices, serial adapters, and USB-backed
-network interfaces.
+This utility takes no command-line options.
+When invoked, it attempts to reset every enumerated USB device, including
+hubs. That can interrupt keyboards, storage devices, serial adapters, and
+USB-backed network interfaces.
 .PP
 Use
 .B resetusb
-only during controlled maintenance windows or other recovery procedures where
-temporary USB disruption is acceptable.
+only during maintenance or recovery work where temporary USB disruption is
+acceptable.
 .SH OUTPUT
 For each successful reset,
 .B resetusb
@@ -65,7 +65,7 @@ Because
 .B resetusb
 resets every enumerated USB device, it can disconnect the very peripherals
 needed to manage the host.
-Plan for console access or other recovery access before using it on remote
+Plan for console access or another recovery path before using it on remote
 systems.
 .SH SEE ALSO
 .BR libusb (3),

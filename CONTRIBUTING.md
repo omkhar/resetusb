@@ -1,9 +1,9 @@
 # Contributing to resetusb
 
-## Ground Rules
+## Guidelines
 
-- Keep changes minimal, auditable, and security-conscious.
-- Preserve safety messaging: this tool can disrupt active USB-connected systems.
+- Keep changes small, reviewable, and security-conscious.
+- Preserve the safety messaging: this tool can disrupt active USB-connected systems.
 - Keep Linux-only assumptions explicit in code, CI, and docs.
 - Follow Linux kernel C style for source changes.
 - Do not add automatic staging/production deployment jobs in this repository.
@@ -12,7 +12,7 @@
 
 By participating, you agree to follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
-## Local Setup
+## Setup
 
 Debian/Ubuntu:
 
@@ -21,9 +21,9 @@ sudo apt-get update
 sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
 ```
 
-## Required Local Checks
+## Before Opening a PR
 
-Run before opening a PR:
+Run these checks before opening a pull request:
 
 ```bash
 make clean
@@ -36,38 +36,38 @@ make sanitize
 make release-preflight
 ```
 
-Optional deeper local check:
+For a longer local run:
 
 ```bash
 make fuzz FUZZ_TIME=10
 ```
 
-Auto-format source files with:
+Format source files with:
 
 ```bash
 make format
 ```
 
-## Pull Request Expectations
+## Pull Requests
 
 - Include a short problem statement and rationale.
 - Include exact commands run and summarized results.
 - Add/adjust unit tests when behavior changes.
 - Keep GitHub Actions references pinned to immutable commit SHAs.
-- Keep behavior changes explicit in docs (`README.md`, `SECURITY.md`) when applicable.
+- Document behavior changes in `README.md` and `SECURITY.md` when they affect users or operators.
 - Update `resetusb.8` when user-visible behavior, output, installation paths, or packaging contents change.
 
 ## Release Process
 
 - Public releases use semantic versioning.
 - Bump `MAJOR` for breaking behavior or release-contract changes, `MINOR` for backward-compatible features, and `PATCH` for backward-compatible fixes.
-- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s vX.Y.Z -m "resetusb release vX.Y.Z"`).
+- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s vMAJOR.MINOR.PATCH -m "resetusb release vMAJOR.MINOR.PATCH"`).
 - Run `make release-preflight` before cutting the tag.
-- After pushing a signed semver tag, manually dispatch `release.yml` from `main`. That trusted workflow runs `release-preflight`, delegates the artifact build to the dedicated reusable builder workflow from the same trusted `main` commit, generates SPDX JSON SBOMs, signs each release artifact with Sigstore, emits per-asset GitHub provenance and SBOM attestations, verifies those attestations, and publishes the release.
+- After pushing a signed semver tag, manually dispatch `release.yml` from `main`. The workflow verifies the tag, runs `release-preflight`, builds and signs the release artifacts, verifies the resulting attestations, and publishes the release.
 - To rebuild an existing signed semver tag with the builder workflow, manually dispatch `.github/workflows/release.yml` from `main` and set the `release_tag` input to that tag.
 - Release packaging is validated against stable and unstable distro channels before publication:
   - Debian stable and sid on `amd64`, `arm64`, and `armv7`
   - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`
   - Fedora stable and rawhide on `amd64`
 - Do not publish binaries manually outside the release workflow or bypass the builder workflow.
-- Verify that release artifacts still include the installed documentation set, especially `resetusb(8)`, when packaging logic changes.
+- When packaging changes, verify that release artifacts still include the installed documentation set, especially `resetusb(8)`.

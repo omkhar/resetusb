@@ -1,41 +1,38 @@
 # Security Policy
 
-## Supported Platform
+## Supported Platforms
 
 - Linux (actively tested in CI)
 - Release artifacts are validated on Debian stable/sid, Ubuntu 24.04/devel, and Fedora stable/rawhide.
 
 ## Reporting a Vulnerability
 
-Please report suspected vulnerabilities privately through GitHub Security Advisories for this repository:
+Please report vulnerabilities privately through GitHub Security Advisories for this repository:
 https://github.com/omkhar/resetusb/security/advisories/new
 
-If private reporting is not available, open an issue with minimal details and request a private follow-up channel.
+If private reporting is not available, open an issue with minimal details and request a private follow-up.
 
-Maintainer response target:
+Response targets:
 
 - Initial acknowledgment: within 3 business days
 - Status update: within 7 business days
 - Coordinated disclosure: after a fix is available or mitigation is documented
 
-Include:
+Please include:
 
-- Affected semver release tag (for example `vX.Y.Z`) or commit SHA
+- Affected semver release tag (for example `vMAJOR.MINOR.PATCH`) or commit SHA
 - Reproduction steps
 - Impact scope
 - Any logs or proof-of-concept details
 
 ## Security Posture
 
-- Root-only execution is required by design.
+- `resetusb` requires root by design.
 - The runtime refuses mismatched real/effective UID execution contexts.
-- CI enforces static analysis (`cppcheck`, `scan-build`), shell script linting (`shellcheck`), dual-compiler unit tests (`gcc`, `clang`), and sanitizer coverage.
-- CI validates release packages and generic tarballs with a reduced stable smoke matrix on packaging-related pull requests, then re-runs the full stable/unstable distro matrix before release publication.
-- ClusterFuzzLite provides presubmit and scheduled fuzzing coverage for input sanitization paths.
-- CI secret scanning uses diff-based `gitleaks` on pull requests and pushes, with full-history scanning in weekly deep validation and release preflight.
-- Release publication is gated by a full `release-preflight` pass before artifacts are uploaded.
-- Public releases are generated in GitHub Actions by manually dispatching the trusted release workflow on `main` for a signed annotated semver tag. The workflow verifies the tag against the pinned maintainer release key before the dedicated reusable builder workflow builds artifacts.
-- Release artifacts include generic tarballs, distro-specific packages, the `resetusb(8)` manual page, SHA256 checksums, SPDX JSON SBOMs, Sigstore keyless bundles (`.sigstore.json`), and per-asset GitHub provenance plus SBOM attestations issued by the dedicated builder workflow.
+- CI covers static analysis, shell linting, unit tests, sanitizers, package validation, fuzzing, and secret scanning.
+- Releases are published only after `release-preflight` succeeds.
+- Public releases are built in GitHub Actions from signed annotated semver tags.
+- Release artifacts include generic tarballs, distro-specific packages, the `resetusb(8)` manual page, SHA256 checksums, SPDX JSON SBOMs, Sigstore keyless bundles (`.sigstore.json`), and GitHub provenance plus SBOM attestations.
 
 ## Out of Scope
 

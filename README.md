@@ -2,13 +2,14 @@
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/omkhar/resetusb/badge)](https://scorecard.dev/viewer/?uri=github.com/omkhar/resetusb)
 
-`resetusb` is a Linux utility that enumerates USB devices and issues resets through `libusb`.
-It is designed for operational recovery workflows where USB devices are stuck or misbehaving.
-It has no flags or filtering options: when run, it attempts to reset every enumerated USB device it can open.
+`resetusb` resets USB devices on Linux through `libusb`.
+Use it during recovery or maintenance when a device stops responding and needs
+to be re-enumerated.
 
-## Actions
+`resetusb` has no flags or filtering. When you run it, it attempts to reset
+every enumerated USB device it can open.
 
-Current GitHub Actions workflow status:
+## Project Status
 
 - [CI](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml): [![CI](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml)
 - [Nightly Deep Validation](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml): [![Nightly Deep Validation](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml)
@@ -27,7 +28,7 @@ Current GitHub Actions workflow status:
 - It refuses `setuid`-style or other mismatched real/effective UID invocations.
 - It resets every enumerated USB device, including hubs.
 - This can interrupt keyboards, storage, serial devices, and USB-backed networking.
-- Use only during controlled maintenance windows or recovery procedures.
+- Use it only during controlled maintenance or recovery work.
 
 ## Requirements
 
@@ -49,13 +50,13 @@ sudo make install
 
 This installs the binary to `/usr/sbin/resetusb` and the man page to `/usr/share/man/man8/resetusb.8`.
 
-## Run
+## Usage
 
 ```bash
 sudo ./resetusb
 ```
 
-Installed usage:
+After installation:
 
 ```bash
 sudo /usr/sbin/resetusb
@@ -69,13 +70,13 @@ reset bus 1 device 2 (1234:5678) Example Device
 Summary: reset 1 device(s), 0 failure(s)
 ```
 
-## Test and Verification
+## Development
 
 ```bash
 make test
 ```
 
-Additional contributor checks:
+Additional checks:
 
 ```bash
 make lint
@@ -85,33 +86,21 @@ make fuzz FUZZ_TIME=10
 make release-preflight
 ```
 
-The CI pipeline enforces:
+CI covers linting, unit tests, sanitizers, package validation, fuzzing, secret
+scanning, and Scorecard checks.
 
-- `ci/static-analysis`: `make lint`, `make check-format`, and `scan-build`
-- `ci/unit-tests`: Linux unit tests with both `gcc` and `clang`
-- `ci/sanitize`: AddressSanitizer + UndefinedBehaviorSanitizer test run
-- `ci/package-smoke`: conditional stable distro smoke tests when release/build plumbing changes
-- `pr-fuzzing`: ClusterFuzzLite presubmit fuzzing for pull requests
-- `batch-fuzzing`: scheduled ClusterFuzzLite batch fuzzing
-- `security-baseline`: diff-based `gitleaks` scanning on pull requests and pushes to `main`
-- `nightly-deep-validation`: weekly full `release-preflight` execution, including the full package matrix and full-history secret scan
-- `scorecard-analysis`: OpenSSF Scorecard scan on `main`, published to GitHub code scanning and `scorecard.dev`
-
-Operational notes:
+Notes:
 
 - `resetusb` exits `0` only when all attempted resets succeed.
-- It exits `1` if any device reset fails, if it is not run as root, if the real and effective UIDs do not match, or if it cannot initialize or enumerate through `libusb`.
-- Product strings from USB descriptors are sanitized before printing so non-printable bytes do not reach the terminal.
+- It exits `1` if any device reset fails, if it is not run as root, if the real and effective UIDs do not match, or if `libusb` initialization or enumeration fails.
+- USB product strings are sanitized before printing so non-printable bytes do not reach the terminal.
 
-## Public Releases
+## Releases
 
-- Public releases use semantic versioning and are published from signed annotated Git tags in the form `vMAJOR.MINOR.PATCH`.
-- Push the signed tag first, then manually dispatch `.github/workflows/release.yml` from `main` with the matching `release_tag`.
-- Releases are only published after the `release-preflight` job passes.
-- The trusted release workflow on `main` delegates artifact builds and attestations to the dedicated reusable builder workflow at `.github/workflows/release-builder.yml` from the same pinned commit.
-- Existing signed release tags can be rebuilt and republished by manually dispatching `.github/workflows/release.yml` on `main` with the `release_tag` input.
-- Release tarballs contain the program plus the `resetusb(8)` manual page, and distro packages install both.
-- Each release includes generic tarballs for:
+- Public releases use semantic versioning and signed annotated tags in the form `vMAJOR.MINOR.PATCH`.
+- Publication only happens after `release-preflight` succeeds.
+- Tarballs include the binary and the `resetusb(8)` manual page. Distro packages install both.
+- Each release includes tarballs for:
   - `linux-amd64`
   - `linux-arm64`
   - `linux-armv7`
@@ -119,12 +108,13 @@ Operational notes:
   - Debian: `amd64`, `arm64`, `armhf`
   - Ubuntu: `amd64`, `arm64`, `armhf`
   - Fedora: `x86_64`
-- Every primary artifact ships with:
+- Each primary artifact also includes:
   - a SHA256 checksum (`.sha256`)
   - an SPDX JSON SBOM (`.spdx.json`)
   - a Sigstore keyless bundle for the artifact (`.sigstore.json`)
   - a Sigstore keyless bundle for the checksum (`.sha256.sigstore.json`)
-- GitHub Actions also emits per-asset GitHub provenance attestations and GitHub SBOM attestations from the dedicated builder workflow before publication.
+- GitHub Actions also emits per-asset provenance and SBOM attestations before publication.
+- Maintainer release steps are documented in `CONTRIBUTING.md`.
 
 Release validation matrix:
 
@@ -132,7 +122,7 @@ Release validation matrix:
 - Ubuntu 24.04 and Ubuntu devel: `amd64`, `arm64`, `armv7`
 - Fedora stable and Fedora rawhide: `amd64`
 
-Platform guidance:
+Choose an artifact:
 
 - x86/AMD: use `linux-amd64`, `debian-amd64.deb`, `ubuntu-amd64.deb`, or `fedora-x86_64.rpm`.
 - Raspberry Pi 64-bit OS: use `linux-arm64`, `debian-arm64.deb`, or `ubuntu-arm64.deb`.
@@ -143,52 +133,52 @@ Install examples:
 Debian:
 
 ```bash
-sudo apt-get install ./resetusb-vX.Y.Z-debian-amd64.deb
+sudo apt-get install ./resetusb-vMAJOR.MINOR.PATCH-debian-amd64.deb
 ```
 
 Ubuntu:
 
 ```bash
-sudo apt-get install ./resetusb-vX.Y.Z-ubuntu-amd64.deb
+sudo apt-get install ./resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb
 ```
 
 Fedora:
 
 ```bash
-sudo dnf install ./resetusb-vX.Y.Z-fedora-x86_64.rpm
+sudo dnf install ./resetusb-vMAJOR.MINOR.PATCH-fedora-x86_64.rpm
 ```
 
 Generic tarball:
 
 ```bash
-tar -xzf resetusb-vX.Y.Z-linux-amd64.tar.gz
-sudo install -m 0755 vX.Y.Z-linux-amd64/resetusb /usr/sbin/resetusb
-sudo install -m 0644 vX.Y.Z-linux-amd64/resetusb.8 /usr/share/man/man8/resetusb.8
+tar -xzf resetusb-vMAJOR.MINOR.PATCH-linux-amd64.tar.gz
+sudo install -m 0755 vMAJOR.MINOR.PATCH-linux-amd64/resetusb /usr/sbin/resetusb
+sudo install -m 0644 vMAJOR.MINOR.PATCH-linux-amd64/resetusb.8 /usr/share/man/man8/resetusb.8
 ```
 
-Tarball runtime prerequisite: install the system `libusb-1.0` runtime first, for example `libusb-1.0-0` on Debian/Ubuntu or `libusb1` on Fedora.
+Tarball note: install the system `libusb-1.0` runtime first, for example `libusb-1.0-0` on Debian/Ubuntu or `libusb1` on Fedora.
 
 Verify an artifact:
 
 ```bash
-sha256sum -c resetusb-vX.Y.Z-ubuntu-amd64.deb.sha256
+sha256sum -c resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb.sha256
 ```
 
 Verify Sigstore provenance (keyless):
 
 ```bash
 cosign verify-blob \
-  --bundle resetusb-vX.Y.Z-ubuntu-amd64.deb.sigstore.json \
+  --bundle resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release-builder\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  resetusb-vX.Y.Z-ubuntu-amd64.deb
+  resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb
 ```
 
 Verify the GitHub provenance attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-vX.Y.Z-ubuntu-amd64.deb \
+  resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml
 ```
@@ -197,15 +187,15 @@ Verify the GitHub SBOM attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-vX.Y.Z-ubuntu-amd64.deb \
+  resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
-GitHub provenance for public releases is anchored to the trusted builder workflow on `main`; the workflow separately verifies the signed source tag before building.
+Public release provenance is rooted in the trusted builder workflow on `main`, which verifies the signed source tag before building.
 
-## Collaboration
+## Community
 
 - Report bugs: open a GitHub Issue with logs and reproduction steps.
 - Propose changes: open a PR and follow `.github/pull_request_template.md`.
@@ -221,8 +211,8 @@ GitHub provenance for public releases is anchored to the trusted builder workflo
 
 ## Documentation
 
-- User-facing behavior and packaging notes in `README.md` should stay aligned with `resetusb(8)`.
-- If you change CLI behavior, output semantics, installation paths, or release packaging, update `resetusb.8` in the same change.
+- Keep `README.md` and `resetusb(8)` in sync.
+- If you change CLI behavior, output semantics, installation paths, or release packaging, update both in the same change.
 
 ## License
 
