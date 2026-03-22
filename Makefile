@@ -33,6 +33,8 @@ FORMAT_SRCS := resetusb.c resetusb.h tests/resetusb_unit_tests.c \
 
 PREFIX ?= /usr
 SBINDIR ?= $(PREFIX)/sbin
+MANDIR ?= $(PREFIX)/share/man
+MAN8DIR ?= $(MANDIR)/man8
 UNAME_S := $(shell uname -s)
 
 .PHONY: all clean install uninstall test lint format check-format sanitize \
@@ -74,6 +76,7 @@ fuzz: $(FUZZ_BIN)
 
 install: resetusb
 	install -Dm700 resetusb $(SBINDIR)/resetusb
+	install -Dm644 resetusb.8 $(MAN8DIR)/resetusb.8
 else
 all resetusb install sanitize:
 	@echo "resetusb only builds on Linux (detected: $(UNAME_S))" >&2
@@ -116,6 +119,7 @@ clean:
 
 uninstall:
 	rm -f $(SBINDIR)/resetusb
+	rm -f $(MAN8DIR)/resetusb.8
 
 release-preflight:
 	./scripts/release-preflight.sh

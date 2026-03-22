@@ -1,0 +1,79 @@
+.TH RESETUSB 8 "March 22, 2026" "resetusb" "System Administration"
+.SH NAME
+resetusb \- reset all enumerated USB devices on Linux
+.SH SYNOPSIS
+.B resetusb
+.SH DESCRIPTION
+.B resetusb
+enumerates USB devices through
+.BR libusb (3)
+and issues a reset to every device it can open.
+It is intended for controlled recovery operations when USB devices are stuck,
+misbehaving, or need to be reprobed by the kernel.
+.PP
+This utility has no command-line options.
+When invoked, it attempts to reset every enumerated USB device, including hubs.
+That can interrupt keyboards, storage devices, serial adapters, and USB-backed
+network interfaces.
+.PP
+Use
+.B resetusb
+only during controlled maintenance windows or other recovery procedures where
+temporary USB disruption is acceptable.
+.SH OUTPUT
+For each successful reset,
+.B resetusb
+prints a line similar to:
+.PP
+.EX
+reset bus 1 device 2 (1234:5678) Example Device
+.EE
+.PP
+After successful initialization and device enumeration,
+.B resetusb
+prints a final summary line similar to:
+.PP
+.EX
+Summary: reset 1 device(s), 0 failure(s)
+.EE
+.PP
+Failures are written to standard error and include the bus number, device
+address, vendor ID, product ID, product string when available, and the
+underlying libusb error name.
+.SH EXIT STATUS
+.TP
+.B 0
+All attempted resets completed without failures.
+.TP
+.B 1
+At least one reset failed, the process was not run with the required
+privileges, the real and effective UIDs did not match, or libusb setup or
+enumeration failed.
+.SH REQUIREMENTS
+.B resetusb
+only runs on Linux and must be executed as root.
+It refuses mismatched real and effective UID execution contexts.
+.SH FILES
+.TP
+.I /usr/sbin/resetusb
+Installed program path.
+.TP
+.I /usr/share/man/man8/resetusb.8
+Installed manual page path.
+.SH SAFETY
+Because
+.B resetusb
+resets every enumerated USB device, it can disconnect the very peripherals
+needed to manage the host.
+Plan for console access or other recovery access before using it on remote
+systems.
+.SH SEE ALSO
+.BR libusb (3),
+.BR lsusb (8)
+.SH AUTHORS
+resetusb maintainers
+.SH HOMEPAGE
+Project page:
+.UR https://github.com/omkhar/resetusb
+https://github.com/omkhar/resetusb
+.UE

@@ -55,12 +55,13 @@ make format
 - Add/adjust unit tests when behavior changes.
 - Keep GitHub Actions references pinned to immutable commit SHAs.
 - Keep behavior changes explicit in docs (`README.md`, `SECURITY.md`) when applicable.
+- Update `resetusb.8` when user-visible behavior, output, installation paths, or packaging contents change.
 
 ## Release Process
 
 - Public releases use semantic versioning.
 - Bump `MAJOR` for breaking behavior or release-contract changes, `MINOR` for backward-compatible features, and `PATCH` for backward-compatible fixes.
-- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s v2.0.1 -m "resetusb release v2.0.1"`).
+- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s v2.0.2 -m "resetusb release v2.0.2"`).
 - Run `make release-preflight` before cutting the tag.
 - After pushing a signed semver tag, manually dispatch `release.yml` from `main`. That trusted workflow runs `release-preflight`, delegates the artifact build to the dedicated reusable builder workflow from the same trusted `main` commit, generates SPDX JSON SBOMs, signs each release artifact with Sigstore, emits per-asset GitHub provenance and SBOM attestations, verifies those attestations, and publishes the release.
 - To rebuild an existing signed semver tag with the builder workflow, manually dispatch `.github/workflows/release.yml` from `main` and set the `release_tag` input to that tag.
@@ -69,3 +70,4 @@ make format
   - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`
   - Fedora stable and rawhide on `amd64`
 - Do not publish binaries manually outside the release workflow or bypass the builder workflow.
+- Verify that release artifacts still include the installed documentation set, especially `resetusb(8)`, when packaging logic changes.

@@ -4,6 +4,7 @@
 
 `resetusb` is a Linux utility that enumerates USB devices and issues resets through `libusb`.
 It is designed for operational recovery workflows where USB devices are stuck or misbehaving.
+It has no flags or filtering options: when run, it attempts to reset every enumerated USB device it can open.
 
 ## Actions
 
@@ -40,10 +41,25 @@ Current GitHub Actions workflow status:
 make
 ```
 
+## Install
+
+```bash
+sudo make install
+```
+
+This installs the binary to `/usr/sbin/resetusb` and the man page to `/usr/share/man/man8/resetusb.8`.
+
 ## Run
 
 ```bash
 sudo ./resetusb
+```
+
+Installed usage:
+
+```bash
+sudo /usr/sbin/resetusb
+man 8 resetusb
 ```
 
 Example output:
@@ -81,6 +97,12 @@ The CI pipeline enforces:
 - `nightly-deep-validation`: weekly full `release-preflight` execution, including the full package matrix and full-history secret scan
 - `scorecard-analysis`: OpenSSF Scorecard scan on `main`, published to GitHub code scanning and `scorecard.dev`
 
+Operational notes:
+
+- `resetusb` exits `0` only when all attempted resets succeed.
+- It exits `1` if any device reset fails, if it is not run as root, if the real and effective UIDs do not match, or if it cannot initialize or enumerate through `libusb`.
+- Product strings from USB descriptors are sanitized before printing so non-printable bytes do not reach the terminal.
+
 ## Public Releases
 
 - Public releases use semantic versioning and are published from signed annotated Git tags in the form `vMAJOR.MINOR.PATCH`.
@@ -88,6 +110,7 @@ The CI pipeline enforces:
 - Releases are only published after the `release-preflight` job passes.
 - The trusted release workflow on `main` delegates artifact builds and attestations to the dedicated reusable builder workflow at `.github/workflows/release-builder.yml` from the same pinned commit.
 - Existing signed release tags can be rebuilt and republished by manually dispatching `.github/workflows/release.yml` on `main` with the `release_tag` input.
+- Release tarballs contain the program plus the `resetusb(8)` manual page, and distro packages install both.
 - Each release includes generic tarballs for:
   - `linux-amd64`
   - `linux-arm64`
@@ -120,49 +143,52 @@ Install examples:
 Debian:
 
 ```bash
-sudo apt-get install ./resetusb-v2.0.1-debian-amd64.deb
+sudo apt-get install ./resetusb-v2.0.2-debian-amd64.deb
 ```
 
 Ubuntu:
 
 ```bash
-sudo apt-get install ./resetusb-v2.0.1-ubuntu-amd64.deb
+sudo apt-get install ./resetusb-v2.0.2-ubuntu-amd64.deb
 ```
 
 Fedora:
 
 ```bash
-sudo dnf install ./resetusb-v2.0.1-fedora-x86_64.rpm
+sudo dnf install ./resetusb-v2.0.2-fedora-x86_64.rpm
 ```
 
 Generic tarball:
 
 ```bash
-tar -xzf resetusb-v2.0.1-linux-amd64.tar.gz
-sudo install -m 0755 v2.0.1-linux-amd64/resetusb /usr/sbin/resetusb
+tar -xzf resetusb-v2.0.2-linux-amd64.tar.gz
+sudo install -m 0755 v2.0.2-linux-amd64/resetusb /usr/sbin/resetusb
+sudo install -m 0644 v2.0.2-linux-amd64/resetusb.8 /usr/share/man/man8/resetusb.8
 ```
+
+Tarball runtime prerequisite: install the system `libusb-1.0` runtime first, for example `libusb-1.0-0` on Debian/Ubuntu or `libusb1` on Fedora.
 
 Verify an artifact:
 
 ```bash
-sha256sum -c resetusb-v2.0.1-ubuntu-amd64.deb.sha256
+sha256sum -c resetusb-v2.0.2-ubuntu-amd64.deb.sha256
 ```
 
 Verify Sigstore provenance (keyless):
 
 ```bash
 cosign verify-blob \
-  --bundle resetusb-v2.0.1-ubuntu-amd64.deb.sigstore.json \
+  --bundle resetusb-v2.0.2-ubuntu-amd64.deb.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release-builder\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  resetusb-v2.0.1-ubuntu-amd64.deb
+  resetusb-v2.0.2-ubuntu-amd64.deb
 ```
 
 Verify the GitHub provenance attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-v2.0.1-ubuntu-amd64.deb \
+  resetusb-v2.0.2-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml
 ```
@@ -171,7 +197,7 @@ Verify the GitHub SBOM attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-v2.0.1-ubuntu-amd64.deb \
+  resetusb-v2.0.2-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml \
   --predicate-type https://spdx.dev/Document/v2.3
@@ -192,6 +218,11 @@ GitHub provenance for public releases is anchored to the trusted builder workflo
 - C source follows Linux kernel style conventions.
 - Formatting is enforced with `.clang-format`.
 - Run `make format` before submitting style-related changes.
+
+## Documentation
+
+- User-facing behavior and packaging notes in `README.md` should stay aligned with `resetusb(8)`.
+- If you change CLI behavior, output semantics, installation paths, or release packaging, update `resetusb.8` in the same change.
 
 ## License
 
