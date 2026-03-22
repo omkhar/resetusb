@@ -12,9 +12,12 @@ require_cmd() {
 SCRIPT_DIR="$(
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 )"
-REPO_ROOT="$(
+BUILDER_ROOT="$(
 	cd -- "${SCRIPT_DIR}/.." && pwd
 )"
+SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
+WORK_ROOT="${WORK_ROOT:-${SOURCE_ROOT}}"
+DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
 
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
@@ -30,8 +33,8 @@ trap cleanup EXIT
 
 echo "==> Building release builder image"
 docker build --platform=linux/amd64 \
-	-f "${REPO_ROOT}/docker/release-builder.Dockerfile" \
-	-t "${BUILDER_IMAGE}" "${REPO_ROOT}"
+	-f "${BUILDER_ROOT}/docker/release-builder.Dockerfile" \
+	-t "${BUILDER_IMAGE}" "${BUILDER_ROOT}"
 
 cat >"${tmp_dockerfile}" <<EOF
 FROM ${BUILDER_IMAGE}
@@ -50,12 +53,12 @@ EOF
 
 echo "==> Building release preflight image"
 docker build --platform=linux/amd64 \
-	-f "${tmp_dockerfile}" -t "${PREFLIGHT_IMAGE}" "${REPO_ROOT}"
+	-f "${tmp_dockerfile}" -t "${PREFLIGHT_IMAGE}" "${BUILDER_ROOT}"
 
 echo "==> Running Linux release preflight"
 docker run --rm --platform=linux/amd64 \
-	-v "${REPO_ROOT}":/work \
-	-w /work \
+	-v "${SOURCE_ROOT}":/source \
+	-w /source \
 	"${PREFLIGHT_IMAGE}" \
 	bash -lc '
 		set -euo pipefail
@@ -74,21 +77,32 @@ docker run --rm --platform=linux/amd64 \
 	'
 
 echo "==> Building release artifacts"
+SOURCE_GIT_SHA="$(
+	if git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+		git -C "${SOURCE_ROOT}" rev-parse HEAD
+	else
+		printf "%s" "${GITHUB_SHA:-}"
+	fi
+)"
 docker run --rm --platform=linux/amd64 \
-	-e GITHUB_SHA="${GITHUB_SHA:-}" \
+	-e GITHUB_SHA="${SOURCE_GIT_SHA}" \
 	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
-	-v "${REPO_ROOT}":/work \
-	-w /work \
+	-e SOURCE_ROOT=/source \
+	-e DIST_DIR=/source/dist \
+	-v "${BUILDER_ROOT}":/builder:ro \
+	-v "${SOURCE_ROOT}":/source \
+	-w /source \
 	"${BUILDER_IMAGE}" \
-	bash -lc './scripts/build-release-artifacts.sh'
+	bash -lc '/builder/scripts/build-release-artifacts.sh'
 
 echo "==> Running stable and unstable package integration tests"
-"${REPO_ROOT}/scripts/test-package-integration.sh"
+WORK_ROOT="${WORK_ROOT}" DIST_DIR="${DIST_DIR}" \
+	"${BUILDER_ROOT}/scripts/test-package-integration.sh"
 
 echo "==> Running gitleaks history scan"
 docker run --rm \
-	-v "${REPO_ROOT}":/repo \
+	-v "${SOURCE_ROOT}":/repo \
 	-w /repo \
 	"${GITLEAKS_IMAGE}" \
 	git /repo --log-opts="--all" --no-banner --redact --exit-code 1

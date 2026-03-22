@@ -60,11 +60,12 @@ make format
 
 - Public releases use semantic versioning.
 - Bump `MAJOR` for breaking behavior or release-contract changes, `MINOR` for backward-compatible features, and `PATCH` for backward-compatible fixes.
-- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s v2.0.0 -m "resetusb release v2.0.0"`).
+- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s v2.0.1 -m "resetusb release v2.0.1"`).
 - Run `make release-preflight` before cutting the tag.
-- GitHub Actions `release.yml` runs `release-preflight`, then builds generic tarballs plus Debian/Ubuntu/Fedora packages, generates SPDX JSON SBOMs, signs each release artifact with Sigstore, emits per-asset GitHub provenance and SBOM attestations, verifies those attestations, and publishes the release.
+- GitHub Actions `release.yml` runs `release-preflight`, then delegates the artifact build to the dedicated reusable builder workflow on `main`, generates SPDX JSON SBOMs, signs each release artifact with Sigstore, emits per-asset GitHub provenance and SBOM attestations, verifies those attestations, and publishes the release.
+- To rebuild an existing signed semver tag with the builder workflow, manually dispatch `.github/workflows/release.yml` from `main` and set the `release_tag` input to that tag.
 - Release packaging is validated against stable and unstable distro channels before publication:
   - Debian stable and sid on `amd64`, `arm64`, and `armv7`
   - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`
   - Fedora stable and rawhide on `amd64`
-- Do not publish binaries manually outside the release workflow.
+- Do not publish binaries manually outside the release workflow or bypass the builder workflow.

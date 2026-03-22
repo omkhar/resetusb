@@ -9,6 +9,7 @@ REPO_ROOT="$(
 	cd -- "${SCRIPT_DIR}/.." && pwd
 )"
 
+WORK_ROOT="${WORK_ROOT:-${REPO_ROOT}}"
 DIST_DIR="${DIST_DIR:-${REPO_ROOT}/dist}"
 PACKAGE_TEST_CHANNELS="${PACKAGE_TEST_CHANNELS:-stable unstable}"
 PACKAGE_TEST_ARCHES="${PACKAGE_TEST_ARCHES:-amd64 arm64 armv7}"
@@ -89,7 +90,7 @@ run_deb_test() {
 	echo "==> ${distro}/${channel}/${arch}"
 	docker run --rm \
 		--platform="${ARCH_PLATFORM[${arch}]}" \
-		-v "${REPO_ROOT}":/work \
+		-v "${WORK_ROOT}":/work \
 		-w /work \
 		"${image}" \
 		sh -euxc '
@@ -141,7 +142,7 @@ run_rpm_test() {
 	echo "==> fedora/${channel}/${arch}"
 	docker run --rm \
 		--platform="${ARCH_PLATFORM[${arch}]}" \
-		-v "${REPO_ROOT}":/work \
+		-v "${WORK_ROOT}":/work \
 		-w /work \
 		"${image}" \
 		sh -euxc '

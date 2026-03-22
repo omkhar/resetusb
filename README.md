@@ -85,6 +85,8 @@ The CI pipeline enforces:
 
 - Public releases use semantic versioning and are published from signed annotated Git tags in the form `vMAJOR.MINOR.PATCH` via `.github/workflows/release.yml`.
 - Releases are only published after the `release-preflight` job passes.
+- The release workflow delegates artifact builds and attestations to the dedicated reusable builder workflow at `.github/workflows/release-builder.yml` on `main`.
+- Existing signed release tags can be rebuilt and republished from that builder by manually dispatching `.github/workflows/release.yml` on `main` with the `release_tag` input.
 - Each release includes generic tarballs for:
   - `linux-amd64`
   - `linux-arm64`
@@ -98,7 +100,7 @@ The CI pipeline enforces:
   - an SPDX JSON SBOM (`.spdx.json`)
   - a Sigstore keyless bundle for the artifact (`.sigstore.json`)
   - a Sigstore keyless bundle for the checksum (`.sha256.sigstore.json`)
-- GitHub Actions also emits per-asset GitHub provenance attestations and GitHub SBOM attestations before publication.
+- GitHub Actions also emits per-asset GitHub provenance attestations and GitHub SBOM attestations from the dedicated builder workflow before publication.
 
 Release validation matrix:
 
@@ -117,62 +119,64 @@ Install examples:
 Debian:
 
 ```bash
-sudo apt-get install ./resetusb-v2.0.0-debian-amd64.deb
+sudo apt-get install ./resetusb-v2.0.1-debian-amd64.deb
 ```
 
 Ubuntu:
 
 ```bash
-sudo apt-get install ./resetusb-v2.0.0-ubuntu-amd64.deb
+sudo apt-get install ./resetusb-v2.0.1-ubuntu-amd64.deb
 ```
 
 Fedora:
 
 ```bash
-sudo dnf install ./resetusb-v2.0.0-fedora-x86_64.rpm
+sudo dnf install ./resetusb-v2.0.1-fedora-x86_64.rpm
 ```
 
 Generic tarball:
 
 ```bash
-tar -xzf resetusb-v2.0.0-linux-amd64.tar.gz
-sudo install -m 0755 v2.0.0-linux-amd64/resetusb /usr/sbin/resetusb
+tar -xzf resetusb-v2.0.1-linux-amd64.tar.gz
+sudo install -m 0755 v2.0.1-linux-amd64/resetusb /usr/sbin/resetusb
 ```
 
 Verify an artifact:
 
 ```bash
-sha256sum -c resetusb-v2.0.0-ubuntu-amd64.deb.sha256
+sha256sum -c resetusb-v2.0.1-ubuntu-amd64.deb.sha256
 ```
 
 Verify Sigstore provenance (keyless):
 
 ```bash
 cosign verify-blob \
-  --bundle resetusb-v2.0.0-ubuntu-amd64.deb.sigstore.json \
-  --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release\.yml@refs/tags/.*$' \
+  --bundle resetusb-v2.0.1-ubuntu-amd64.deb.sigstore.json \
+  --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release-builder\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  resetusb-v2.0.0-ubuntu-amd64.deb
+  resetusb-v2.0.1-ubuntu-amd64.deb
 ```
 
 Verify the GitHub provenance attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-v2.0.0-ubuntu-amd64.deb \
+  resetusb-v2.0.1-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
-  --signer-workflow omkhar/resetusb/.github/workflows/release.yml
+  --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml
 ```
 
 Verify the GitHub SBOM attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-v2.0.0-ubuntu-amd64.deb \
+  resetusb-v2.0.1-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
-  --signer-workflow omkhar/resetusb/.github/workflows/release.yml \
+  --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
+
+For tag-triggered releases, add `--source-ref refs/tags/v2.0.1` if you want verification to require the original signed tag ref as well as the builder workflow.
 
 ## Collaboration
 

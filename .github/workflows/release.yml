@@ -5,68 +5,107 @@ on:
     tags:
       - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Signed semver tag to rebuild or publish with the builder workflow
+        required: true
+        type: string
 
 permissions: {}
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  release-preflight:
-    name: release-preflight
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read # Check out repository contents for release validation.
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Validate semver release tag
-        env:
-          REF_TYPE: ${{ github.ref_type }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-
-          if [[ "${REF_TYPE}" != "tag" || ! "${RELEASE_TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-            echo "Release runs require a signed semver tag in the form vMAJOR.MINOR.PATCH" >&2
-            exit 1
-          fi
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
-      - name: Run release preflight
-        run: ./scripts/release-preflight.sh
-
-  release-build:
-    name: release-build
-    needs: release-preflight
+  release-context:
+    name: release-context
     runs-on: ubuntu-latest
     outputs:
-      primary_artifacts: ${{ steps.manifest.outputs.primary_artifacts }}
-    permissions:
-      contents: read # Check out repository contents and verify the release tag.
-      id-token: write # Sign release artifacts with keyless Sigstore identity.
+      builder_sha: ${{ steps.resolve.outputs.builder_sha }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      source_ref: ${{ steps.resolve.outputs.source_ref }}
+      verify_source_ref: ${{ steps.resolve.outputs.verify_source_ref }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Validate semver release tag
+      - name: Resolve trusted release inputs
         env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          REF_NAME: ${{ github.ref_name }}
           REF_TYPE: ${{ github.ref_type }}
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          semver_regex='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 
-          if [[ "${REF_TYPE}" != "tag" || ! "${RELEASE_TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if [[ "${REF_TYPE}" != "branch" || "${REF_NAME}" != "main" ]]; then
+              echo "Manual release rebuilds must be dispatched from main" >&2
+              exit 1
+            fi
+
+            release_tag="${INPUT_RELEASE_TAG}"
+            verify_source_ref=""
+          else
+            if [[ "${REF_TYPE}" != "tag" ]]; then
+              echo "Release push runs require a signed semver tag" >&2
+              exit 1
+            fi
+
+            release_tag="${REF_NAME}"
+            verify_source_ref="refs/tags/${REF_NAME}"
+          fi
+
+          if [[ ! "${release_tag}" =~ ${semver_regex} ]]; then
             echo "Release runs require a signed semver tag in the form vMAJOR.MINOR.PATCH" >&2
             exit 1
           fi
-      - name: Verify signed release tag
+
+          builder_sha="$(
+            git ls-remote --exit-code "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main |
+              awk '{print $1}'
+          )"
+          if [[ ! "${builder_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Unable to resolve the pinned builder SHA from main" >&2
+            exit 1
+          fi
+
+          printf 'builder_sha=%s\n' "${builder_sha}" >> "${GITHUB_OUTPUT}"
+          printf 'release_tag=%s\n' "${release_tag}" >> "${GITHUB_OUTPUT}"
+          printf 'source_ref=refs/tags/%s\n' "${release_tag}" >> "${GITHUB_OUTPUT}"
+          printf 'verify_source_ref=%s\n' "${verify_source_ref}" >> "${GITHUB_OUTPUT}"
+
+  release-preflight:
+    name: release-preflight
+    needs: release-context
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Check out builder inputs and tagged release source.
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.release-context.outputs.builder_sha }}
+          fetch-depth: 0
+          path: builder
+          persist-credentials: false
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.release-context.outputs.source_ref }}
+          fetch-depth: 0
+          path: source
+          persist-credentials: false
+      - name: Validate semver release tag
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${RELEASE_TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Release runs require a signed semver tag in the form vMAJOR.MINOR.PATCH" >&2
+            exit 1
+          fi
+      - name: Verify signed release tag before preflight
+        env:
+          RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
           RELEASE_SIGNING_KEY_FPR: 90554248C4F7CC086BB745D0DA5A8E9F536C42FD
         run: |
           set -euo pipefail
@@ -74,280 +113,128 @@ jobs:
           export GNUPGHOME
           trap 'rm -rf "$GNUPGHOME"' EXIT
 
-          actual_fpr=
           actual_fpr="$(
-            gpg --batch --with-colons --show-keys .github/keys/release-signing-key.asc |
+            gpg --batch --with-colons --show-keys builder/.github/keys/release-signing-key.asc |
               awk -F: '/^fpr:/ {print $10; exit}'
           )"
 
-          if [[ "$actual_fpr" != "$RELEASE_SIGNING_KEY_FPR" ]]; then
-            echo "Unexpected release signing key fingerprint: $actual_fpr" >&2
+          if [[ "${actual_fpr}" != "${RELEASE_SIGNING_KEY_FPR}" ]]; then
+            echo "Unexpected release signing key fingerprint: ${actual_fpr}" >&2
             exit 1
           fi
 
-          gpg --batch --import .github/keys/release-signing-key.asc
-          printf '%s:6:\n' "$RELEASE_SIGNING_KEY_FPR" | \
+          gpg --batch --import builder/.github/keys/release-signing-key.asc
+          printf '%s:6:\n' "${RELEASE_SIGNING_KEY_FPR}" | \
             gpg --batch --import-ownertrust
 
-          git rev-parse --verify "refs/tags/${RELEASE_TAG}^{tag}" >/dev/null
-          git -c gpg.program=gpg verify-tag "$RELEASE_TAG"
-      - name: Install cosign
-        run: |
-          set -euo pipefail
-          version="v3.0.2"
-          expected_sha256="46dbdcb5467a3dfec2526923d0b3365e40c8d9dc00ec23d5aca3437449e8cbfd"
-          user_agent="Better Uptime Bot Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"
-          install_dir="${RUNNER_TEMP}/bin"
-
-          mkdir -p "$install_dir"
-          curl --fail --show-error --silent --location \
-            --retry 6 --retry-all-errors --retry-delay 2 \
-            --user-agent "$user_agent" \
-            "https://github.com/sigstore/cosign/releases/download/${version}/cosign-linux-amd64" \
-            --output "${install_dir}/cosign"
-
-          echo "${expected_sha256}  ${install_dir}/cosign" | sha256sum --check --strict
-          chmod +x "${install_dir}/cosign"
-          echo "${install_dir}" >> "$GITHUB_PATH"
-          "${install_dir}/cosign" version
-      - name: Build release builder image
-        run: docker build --platform=linux/amd64 -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
-
-      - name: Build release artifacts
-        run: |
-          docker run --rm --platform=linux/amd64 \
-            -e GITHUB_SHA="${GITHUB_SHA}" \
-            -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
-            -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
-            -v "$PWD":/work \
-            -w /work \
-            "resetusb-release-builder:${GITHUB_SHA}" \
-            bash -lc './scripts/build-release-artifacts.sh'
-      - name: Normalize artifact ownership
-        run: sudo chown -R "$(id -u):$(id -g)" dist
-      - name: Install Syft
-        id: syft
-        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          syft-version: v1.42.3
-      - name: Generate SPDX SBOMs
+          git -C source rev-parse --verify "refs/tags/${RELEASE_TAG}^{tag}" >/dev/null
+          git -C source -c gpg.program=gpg verify-tag "${RELEASE_TAG}"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+      - name: Run release preflight
         env:
-          SYFT_CMD: ${{ steps.syft.outputs.cmd }}
+          GITHUB_REF_NAME: ${{ needs.release-context.outputs.release_tag }}
+          GITHUB_REF_TYPE: tag
         run: |
           set -euo pipefail
-          shopt -s nullglob
 
-          if [[ "${SYFT_CMD}" != /* || ! -x "${SYFT_CMD}" ]]; then
-            echo "Unexpected syft command path: ${SYFT_CMD}" >&2
-            exit 1
-          fi
+          BUILDER_ROOT="$PWD/builder" \
+          SOURCE_ROOT="$PWD/source" \
+          WORK_ROOT="$PWD/source" \
+          DIST_DIR="$PWD/source/dist" \
+          ./builder/scripts/release-preflight.sh
 
-          for artifact in dist/*; do
-            if [[ ! -f "$artifact" || "$artifact" == *.sha256 || "$artifact" == *.sigstore.json || "$artifact" == *.spdx.json ]]; then
-              continue
-            fi
-
-            "${SYFT_CMD}" "$artifact" \
-              -o "spdx-json=${artifact}.spdx.json"
-          done
-      - name: Refresh release checksums
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-
-          rm -f dist/*.sha256
-
-          for artifact in dist/*; do
-            if [[ ! -f "$artifact" || "$artifact" == *.sha256 ]]; then
-              continue
-            fi
-
-            (
-              cd dist
-              sha256sum "$(basename "$artifact")" > "$(basename "$artifact").sha256"
-            )
-          done
-      - name: Sign release artifacts with Sigstore
-        env:
-          COSIGN_YES: "true"
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-
-          for artifact in dist/*; do
-            if [[ ! -f "$artifact" || "$artifact" == *.sigstore.json ]]; then
-              continue
-            fi
-            cosign sign-blob --bundle "${artifact}.sigstore.json" "$artifact"
-          done
-      - name: Verify Sigstore signatures
-        run: |
-          set -euo pipefail
-          identity_regex="^https://github\\.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@refs/tags/.*$"
-          shopt -s nullglob
-
-          for artifact in dist/*; do
-            if [[ ! -f "$artifact" || "$artifact" == *.sigstore.json ]]; then
-              continue
-            fi
-            cosign verify-blob \
-              --bundle "${artifact}.sigstore.json" \
-              --certificate-identity-regexp "$identity_regex" \
-              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              "$artifact"
-          done
-      - name: Capture primary release artifacts
-        id: manifest
-        run: |
-          python3 - <<'PY' >> "${GITHUB_OUTPUT}"
-          import json
-          from pathlib import Path
-
-          primary = []
-          for path in sorted(Path("dist").iterdir()):
-              if not path.is_file():
-                  continue
-              name = path.name
-              if name.endswith(".sha256") or name.endswith(".sigstore.json") or name.endswith(".spdx.json"):
-                  continue
-              if "/" in name or "\\" in name or not name.replace(".", "").replace("-", "").replace("_", "").isalnum():
-                  raise SystemExit(f"unexpected artifact name: {name}")
-              primary.append(name)
-
-          print(f"primary_artifacts={json.dumps(primary)}")
-          PY
-      - name: Upload release staging artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: release-dist
-          path: dist/
-          if-no-files-found: error
-          retention-days: 7
-
-  release-attest:
-    name: release-attest (${{ matrix.artifact }})
-    needs: release-build
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        artifact: ${{ fromJson(needs.release-build.outputs.primary_artifacts) }}
+  release-build:
+    name: release-build
+    needs:
+      - release-context
+      - release-preflight
     permissions:
-      actions: read # Download staged workflow artifacts for attestation.
-      artifact-metadata: write # Persist attestation subject metadata.
-      attestations: write # Publish GitHub artifact attestations.
-      contents: read # Read workflow metadata during verification.
-      id-token: write # Mint OIDC certificates for artifact attestations.
-    steps:
-      - name: Download staged release artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: release-dist
-          path: dist
-      - name: Validate artifact path
-        id: artifact
-        env:
-          ARTIFACT_NAME: ${{ matrix.artifact }}
-        run: |
-          set -euo pipefail
-
-          if [[ ! "${ARTIFACT_NAME}" =~ ^[A-Za-z0-9._-]+$ ]]; then
-            echo "Unexpected artifact name: ${ARTIFACT_NAME}" >&2
-            exit 1
-          fi
-
-          artifact_path="dist/${ARTIFACT_NAME}"
-          sbom_path="${artifact_path}.spdx.json"
-
-          test -f "${artifact_path}"
-          test -f "${sbom_path}"
-
-          printf 'name=%s\n' "${ARTIFACT_NAME}" >> "${GITHUB_OUTPUT}"
-          printf 'path=%s\n' "${artifact_path}" >> "${GITHUB_OUTPUT}"
-          printf 'sbom_path=%s\n' "${sbom_path}" >> "${GITHUB_OUTPUT}"
-      - name: Generate GitHub provenance attestation
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
-        with:
-          show-summary: false
-          subject-path: ${{ steps.artifact.outputs.path }}
-      - name: Generate GitHub SBOM attestation
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
-        with:
-          show-summary: false
-          subject-path: ${{ steps.artifact.outputs.path }}
-          sbom-path: ${{ steps.artifact.outputs.sbom_path }}
-      - name: Verify GitHub provenance attestation
-        env:
-          ARTIFACT_PATH: ${{ steps.artifact.outputs.path }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          for attempt in 1 2 3 4 5; do
-            if gh attestation verify "${ARTIFACT_PATH}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml" \
-              --source-ref "refs/tags/${GITHUB_REF_NAME}"; then
-              exit 0
-            fi
-
-            sleep $((attempt * 3))
-          done
-
-          exit 1
-      - name: Verify GitHub SBOM attestation
-        env:
-          ARTIFACT_PATH: ${{ steps.artifact.outputs.path }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          for attempt in 1 2 3 4 5; do
-            if gh attestation verify "${ARTIFACT_PATH}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml" \
-              --source-ref "refs/tags/${GITHUB_REF_NAME}" \
-              --predicate-type "https://spdx.dev/Document/v2.3"; then
-              exit 0
-            fi
-
-            sleep $((attempt * 3))
-          done
-
-          exit 1
+      artifact-metadata: write # Persist subject metadata for builder attestations.
+      attestations: write # Publish GitHub attestations from the builder workflow.
+      contents: read # Check out builder inputs and tagged release source.
+      id-token: write # Mint OIDC identities for Sigstore and GitHub attestations.
+    uses: omkhar/resetusb/.github/workflows/release-builder.yml@main
+    with:
+      builder_sha: ${{ needs.release-context.outputs.builder_sha }}
+      release_tag: ${{ needs.release-context.outputs.release_tag }}
+      source_ref: ${{ needs.release-context.outputs.source_ref }}
+      verify_source_ref: ${{ needs.release-context.outputs.verify_source_ref }}
 
   release-publish:
     name: release-publish
     needs:
+      - release-context
       - release-build
-      - release-attest
     runs-on: ubuntu-latest
     permissions:
       actions: read # Download staged workflow artifacts before publication.
       contents: write # Create and update the GitHub release with generated artifacts.
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
       - name: Download staged release artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-dist
           path: dist
+      - name: Verify staged artifacts against the builder workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIMARY_ARTIFACTS_JSON: ${{ needs.release-build.outputs.primary_artifacts }}
+          VERIFY_SOURCE_REF: ${{ needs.release-context.outputs.verify_source_ref }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          artifacts = json.loads(os.environ["PRIMARY_ARTIFACTS_JSON"])
+          if not artifacts:
+              raise SystemExit("no primary artifacts were staged for publication")
+
+          verify_source_ref = os.environ["VERIFY_SOURCE_REF"]
+          signer_workflow = f'{os.environ["GITHUB_REPOSITORY"]}/.github/workflows/release-builder.yml'
+
+          for artifact in artifacts:
+              artifact_path = f"dist/{artifact}"
+              if not os.path.isfile(artifact_path):
+                  raise SystemExit(f"missing staged artifact: {artifact_path}")
+
+              base_cmd = [
+                  "gh",
+                  "attestation",
+                  "verify",
+                  artifact_path,
+                  "--repo",
+                  os.environ["GITHUB_REPOSITORY"],
+                  "--signer-workflow",
+                  signer_workflow,
+              ]
+              if verify_source_ref:
+                  base_cmd.extend(["--source-ref", verify_source_ref])
+
+              subprocess.run(base_cmd, check=True)
+              subprocess.run(
+                  base_cmd + ["--predicate-type", "https://spdx.dev/Document/v2.3"],
+                  check=True,
+              )
+          PY
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${RELEASE_TAG}"
           notes_file="$(mktemp)"
           release_exists=false
           release_is_draft=false
           mapfile -t files < <(find dist -maxdepth 1 -type f -printf '%f\n' | sort)
 
           cat >"$notes_file" <<EOF
-          Automated public release artifact.
+          Automated public release artifact built by the dedicated GitHub builder workflow.
+
+          Source tag: ${tag}
 
           Files:
           EOF

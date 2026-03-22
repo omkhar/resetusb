@@ -5,9 +5,10 @@ set -euo pipefail
 SCRIPT_DIR="$(
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 )"
-REPO_ROOT="$(
+BUILDER_ROOT="$(
 	cd -- "${SCRIPT_DIR}/.." && pwd
 )"
+SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
 
 resolve_short_sha() {
 	if [[ -n "${GITHUB_SHA:-}" ]]; then
@@ -16,8 +17,8 @@ resolve_short_sha() {
 	fi
 
 	if command -v git >/dev/null 2>&1 &&
-		git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-		git -C "${REPO_ROOT}" rev-parse --short=12 HEAD
+		git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+		git -C "${SOURCE_ROOT}" rev-parse --short=12 HEAD
 		return
 	fi
 
@@ -58,8 +59,8 @@ else
 	PACKAGE_VERSION="0.0.0.git${SHORT_SHA}"
 fi
 
-DIST_DIR="${DIST_DIR:-${REPO_ROOT}/dist}"
-WORK_DIR="${WORK_DIR:-${REPO_ROOT}/build/release}"
+DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
+WORK_DIR="${WORK_DIR:-${SOURCE_ROOT}/build/release}"
 BIN_DIR="${WORK_DIR}/bin"
 STAGE_DIR="${WORK_DIR}/stage"
 MAINTAINER="${MAINTAINER:-resetusb maintainers <noreply@github.com>}"
@@ -130,7 +131,7 @@ run_binary_test() {
 		"${qemu_cmd[@]}" "${test_bin}"
 		expect_non_root_error "${log_file}" "${qemu_cmd[@]}" "${runtime_bin}"
 	else
-		make -C "${REPO_ROOT}" CC="${ARCH_CC[${arch}]}" test
+		make -C "${SOURCE_ROOT}" CC="${ARCH_CC[${arch}]}" test
 		expect_non_root_error "${log_file}" "${runtime_bin}"
 	fi
 }
@@ -141,19 +142,19 @@ build_binary() {
 	local out_dir="${BIN_DIR}/${arch}"
 
 	echo "==> Building and validating ${arch}"
-	make -C "${REPO_ROOT}" clean
+	make -C "${SOURCE_ROOT}" clean
 
 	if [[ "${arch}" == "amd64" ]]; then
-		make -C "${REPO_ROOT}" CC="${cc}"
+		make -C "${SOURCE_ROOT}" CC="${cc}"
 	else
-		make -C "${REPO_ROOT}" CC="${cc}" resetusb-tests resetusb
+		make -C "${SOURCE_ROOT}" CC="${cc}" resetusb-tests resetusb
 	fi
 
-	run_binary_test "${arch}" "${REPO_ROOT}/resetusb-tests" \
-		"${REPO_ROOT}/resetusb"
+	run_binary_test "${arch}" "${SOURCE_ROOT}/resetusb-tests" \
+		"${SOURCE_ROOT}/resetusb"
 
 	mkdir -p "${out_dir}"
-	install -m 0755 "${REPO_ROOT}/resetusb" "${out_dir}/resetusb"
+	install -m 0755 "${SOURCE_ROOT}/resetusb" "${out_dir}/resetusb"
 }
 
 create_tarball() {
@@ -166,8 +167,8 @@ create_tarball() {
 	mkdir -p "${stage_path}"
 
 	install -m 0755 "${BIN_DIR}/${arch}/resetusb" "${stage_path}/resetusb"
-	install -m 0644 "${REPO_ROOT}/README.md" "${stage_path}/README.md"
-	install -m 0644 "${REPO_ROOT}/LICENSE" "${stage_path}/LICENSE"
+	install -m 0644 "${SOURCE_ROOT}/README.md" "${stage_path}/README.md"
+	install -m 0644 "${SOURCE_ROOT}/LICENSE" "${stage_path}/LICENSE"
 
 	tar -C "${STAGE_DIR}" -czf "${archive_path}" "${stage_name}"
 }
@@ -186,9 +187,9 @@ create_deb_package() {
 
 	install -m 0755 "${BIN_DIR}/${arch}/resetusb" \
 		"${pkg_root}/usr/sbin/resetusb"
-	install -m 0644 "${REPO_ROOT}/README.md" \
+	install -m 0644 "${SOURCE_ROOT}/README.md" \
 		"${pkg_root}/usr/share/doc/resetusb/README.md"
-	install -m 0644 "${REPO_ROOT}/LICENSE" \
+	install -m 0644 "${SOURCE_ROOT}/LICENSE" \
 		"${pkg_root}/usr/share/doc/resetusb/LICENSE"
 
 	cat >"${pkg_root}/DEBIAN/control" <<EOF
@@ -225,9 +226,9 @@ create_rpm_package() {
 
 	install -m 0755 "${BIN_DIR}/${arch}/resetusb" \
 		"${rpm_root}/SOURCES/resetusb"
-	install -m 0644 "${REPO_ROOT}/README.md" \
+	install -m 0644 "${SOURCE_ROOT}/README.md" \
 		"${rpm_root}/SOURCES/README.md"
-	install -m 0644 "${REPO_ROOT}/LICENSE" \
+	install -m 0644 "${SOURCE_ROOT}/LICENSE" \
 		"${rpm_root}/SOURCES/LICENSE"
 
 	spec_path="${rpm_root}/SPECS/resetusb.spec"
