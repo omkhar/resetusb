@@ -61,10 +61,11 @@ make format
 
 - Public releases use semantic versioning.
 - Bump `MAJOR` for breaking behavior or release-contract changes, `MINOR` for backward-compatible features, and `PATCH` for backward-compatible fixes.
-- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s vMAJOR.MINOR.PATCH -m "resetusb release vMAJOR.MINOR.PATCH"`).
+- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` at the commit you intend to release (for example `git tag -s vMAJOR.MINOR.PATCH -m "resetusb release vMAJOR.MINOR.PATCH"`).
 - Run `make release-preflight` before cutting the tag.
-- After pushing a signed semver tag, manually dispatch `release.yml` from `main`. The workflow verifies the tag, runs `release-preflight`, builds and signs the release artifacts, verifies the resulting attestations, and publishes the release.
-- To rebuild an existing signed semver tag with the builder workflow, manually dispatch `.github/workflows/release.yml` from `main` and set the `release_tag` input to that tag.
+- After pushing a signed semver tag, manually dispatch `release.yml` from `main`. The workflow resolves the signed tag to an immutable commit digest, verifies the tag with the pinned release key, runs `release-preflight`, builds and signs the release artifacts, signs a release manifest for the artifact set, verifies the resulting attestations against the trusted builder workflow revision, and publishes the release.
+- Published release tags are immutable. If anything in the release contents changes, merge a fix and cut a new patch version instead of rebuilding or replacing an existing tag.
+- If a release run fails before publication, rerun the workflow for the same tag. The publish step reuses any existing draft, rewrites the draft notes, and replaces the draft assets before publication.
 - Release packaging is validated against stable and unstable distro channels before publication:
   - Debian stable and sid on `amd64`, `arm64`, and `armv7`
   - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`
