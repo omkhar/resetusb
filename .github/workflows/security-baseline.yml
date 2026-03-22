@@ -60,9 +60,18 @@ jobs:
 
       - name: Scan new commits for hardcoded secrets
         if: steps.scope.outputs.mode == 'range'
+        env:
+          GITLEAKS_RANGE: ${{ steps.scope.outputs.range }}
         run: |
+          set -euo pipefail
+
+          if [[ ! "${GITLEAKS_RANGE}" =~ ^[[:xdigit:]]{40}\.\.[[:xdigit:]]{40}$ ]]; then
+            echo "Unexpected revision range: ${GITLEAKS_RANGE}" >&2
+            exit 1
+          fi
+
           "$(go env GOPATH)/bin/gitleaks" git . \
-            --log-opts="${{ steps.scope.outputs.range }}" \
+            --log-opts="${GITLEAKS_RANGE}" \
             --no-banner \
             --redact \
             --exit-code 1

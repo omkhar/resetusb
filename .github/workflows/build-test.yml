@@ -89,9 +89,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential clang libusb-1.0-0-dev
       - name: Build and run unit tests
+        env:
+          MATRIX_CC: ${{ matrix.cc }}
         run: |
+          set -euo pipefail
+
+          case "${MATRIX_CC}" in
+            gcc|clang) ;;
+            *)
+              echo "Unsupported compiler: ${MATRIX_CC}" >&2
+              exit 1
+              ;;
+          esac
+
           make clean
-          make CC="${{ matrix.cc }}" test
+          make CC="${MATRIX_CC}" test
 
   sanitize:
     name: sanitize

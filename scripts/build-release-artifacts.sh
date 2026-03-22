@@ -270,7 +270,10 @@ write_checksums() {
 		if [[ ! -f "${artifact}" || "${artifact}" == *.sha256 ]]; then
 			continue
 		fi
-		sha256sum "${artifact}" > "${artifact}.sha256"
+		(
+			cd "${DIST_DIR}"
+			sha256sum "$(basename "${artifact}")" > "$(basename "${artifact}").sha256"
+		)
 	done
 	shopt -u nullglob
 }
