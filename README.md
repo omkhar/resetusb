@@ -83,10 +83,11 @@ The CI pipeline enforces:
 
 ## Public Releases
 
-- Public releases use semantic versioning and are published from signed annotated Git tags in the form `vMAJOR.MINOR.PATCH` via `.github/workflows/release.yml`.
+- Public releases use semantic versioning and are published from signed annotated Git tags in the form `vMAJOR.MINOR.PATCH`.
 - Releases are only published after the `release-preflight` job passes.
-- The release workflow delegates artifact builds and attestations to the dedicated reusable builder workflow at `.github/workflows/release-builder.yml` on `main`.
-- Existing signed release tags can be rebuilt and republished from that builder by manually dispatching `.github/workflows/release.yml` on `main` with the `release_tag` input.
+- Tag pushes first dispatch `.github/workflows/release.yml` on `main` via `.github/workflows/release-dispatch.yml`, so the trusted builder always comes from the protected `main` branch instead of the source tag.
+- The trusted release workflow on `main` delegates artifact builds and attestations to the dedicated reusable builder workflow at `.github/workflows/release-builder.yml` from the same pinned commit.
+- Existing signed release tags can be rebuilt and republished by manually dispatching `.github/workflows/release.yml` on `main` with the `release_tag` input.
 - Each release includes generic tarballs for:
   - `linux-amd64`
   - `linux-arm64`
@@ -176,7 +177,7 @@ gh attestation verify \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
-For tag-triggered releases, add `--source-ref refs/tags/v2.0.1` if you want verification to require the original signed tag ref as well as the builder workflow.
+GitHub provenance for public releases is anchored to the trusted builder workflow on `main`; the workflow separately verifies the signed source tag before building.
 
 ## Collaboration
 
