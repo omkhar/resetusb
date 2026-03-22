@@ -150,6 +150,7 @@ jobs:
       - release-context
       - release-preflight
     permissions:
+      actions: read # Allow the reusable workflow to download staged artifacts for attestation.
       artifact-metadata: write # Persist subject metadata for builder attestations.
       attestations: write # Publish GitHub attestations from the builder workflow.
       contents: read # Check out builder inputs and tagged release source.
