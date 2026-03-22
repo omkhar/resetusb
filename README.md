@@ -84,8 +84,8 @@ The CI pipeline enforces:
 ## Public Releases
 
 - Public releases use semantic versioning and are published from signed annotated Git tags in the form `vMAJOR.MINOR.PATCH`.
+- Push the signed tag first, then manually dispatch `.github/workflows/release.yml` from `main` with the matching `release_tag`.
 - Releases are only published after the `release-preflight` job passes.
-- Tag pushes first dispatch `.github/workflows/release.yml` on `main` via `.github/workflows/release-dispatch.yml`, so the trusted builder always comes from the protected `main` branch instead of the source tag.
 - The trusted release workflow on `main` delegates artifact builds and attestations to the dedicated reusable builder workflow at `.github/workflows/release-builder.yml` from the same pinned commit.
 - Existing signed release tags can be rebuilt and republished by manually dispatching `.github/workflows/release.yml` on `main` with the `release_tag` input.
 - Each release includes generic tarballs for:

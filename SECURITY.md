@@ -34,7 +34,7 @@ Include:
 - ClusterFuzzLite provides presubmit and scheduled fuzzing coverage for input sanitization paths.
 - CI secret scanning uses diff-based `gitleaks` on pull requests and pushes, with full-history scanning in weekly deep validation and release preflight.
 - Release publication is gated by a full `release-preflight` pass before artifacts are uploaded.
-- Public releases are generated in GitHub Actions from signed annotated semver tags that dispatch the trusted release workflow on `main`, where the tag is verified against the pinned maintainer release key before the dedicated reusable builder workflow builds artifacts.
+- Public releases are generated in GitHub Actions by manually dispatching the trusted release workflow on `main` for a signed annotated semver tag. The workflow verifies the tag against the pinned maintainer release key before the dedicated reusable builder workflow builds artifacts.
 - Release artifacts include generic tarballs, distro-specific packages, SHA256 checksums, SPDX JSON SBOMs, Sigstore keyless bundles (`.sigstore.json`), and per-asset GitHub provenance plus SBOM attestations issued by the dedicated builder workflow.
 
 ## Out of Scope
