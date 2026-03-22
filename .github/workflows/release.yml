@@ -209,6 +209,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
           tag="${RELEASE_TAG}"
@@ -229,18 +230,18 @@ jobs:
             printf -- '          - %s\n' "$file" >>"$notes_file"
           done
 
-          if gh release view "$tag" --json isDraft >/dev/null 2>&1; then
+          if gh release view "$tag" --repo "${REPOSITORY}" --json isDraft >/dev/null 2>&1; then
             release_exists=true
-            release_is_draft="$(gh release view "$tag" --json isDraft -q '.isDraft')"
+            release_is_draft="$(gh release view "$tag" --repo "${REPOSITORY}" --json isDraft -q '.isDraft')"
           fi
 
           if [[ "${release_exists}" != true ]]; then
-            gh release create "$tag" --title "resetusb ${tag}" --notes-file "$notes_file" --draft
+            gh release create "$tag" --repo "${REPOSITORY}" --title "resetusb ${tag}" --notes-file "$notes_file" --draft
             release_is_draft=true
           fi
 
-          gh release upload "$tag" dist/* --clobber
+          gh release upload "$tag" dist/* --repo "${REPOSITORY}" --clobber
 
           if [[ "${release_is_draft}" == "true" ]]; then
-            gh release edit "$tag" --draft=false
+            gh release edit "$tag" --repo "${REPOSITORY}" --draft=false
           fi
