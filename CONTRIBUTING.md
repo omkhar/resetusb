@@ -61,7 +61,7 @@ make format
 
 - Public releases use semantic versioning.
 - Bump `MAJOR` for breaking behavior or release-contract changes, `MINOR` for backward-compatible features, and `PATCH` for backward-compatible fixes.
-- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s v2.0.3 -m "resetusb release v2.0.3"`).
+- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` (for example `git tag -s vX.Y.Z -m "resetusb release vX.Y.Z"`).
 - Run `make release-preflight` before cutting the tag.
 - After pushing a signed semver tag, manually dispatch `release.yml` from `main`. That trusted workflow runs `release-preflight`, delegates the artifact build to the dedicated reusable builder workflow from the same trusted `main` commit, generates SPDX JSON SBOMs, signs each release artifact with Sigstore, emits per-asset GitHub provenance and SBOM attestations, verifies those attestations, and publishes the release.
 - To rebuild an existing signed semver tag with the builder workflow, manually dispatch `.github/workflows/release.yml` from `main` and set the `release_tag` input to that tag.

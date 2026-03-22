@@ -143,27 +143,27 @@ Install examples:
 Debian:
 
 ```bash
-sudo apt-get install ./resetusb-v2.0.3-debian-amd64.deb
+sudo apt-get install ./resetusb-vX.Y.Z-debian-amd64.deb
 ```
 
 Ubuntu:
 
 ```bash
-sudo apt-get install ./resetusb-v2.0.3-ubuntu-amd64.deb
+sudo apt-get install ./resetusb-vX.Y.Z-ubuntu-amd64.deb
 ```
 
 Fedora:
 
 ```bash
-sudo dnf install ./resetusb-v2.0.3-fedora-x86_64.rpm
+sudo dnf install ./resetusb-vX.Y.Z-fedora-x86_64.rpm
 ```
 
 Generic tarball:
 
 ```bash
-tar -xzf resetusb-v2.0.3-linux-amd64.tar.gz
-sudo install -m 0755 v2.0.3-linux-amd64/resetusb /usr/sbin/resetusb
-sudo install -m 0644 v2.0.3-linux-amd64/resetusb.8 /usr/share/man/man8/resetusb.8
+tar -xzf resetusb-vX.Y.Z-linux-amd64.tar.gz
+sudo install -m 0755 vX.Y.Z-linux-amd64/resetusb /usr/sbin/resetusb
+sudo install -m 0644 vX.Y.Z-linux-amd64/resetusb.8 /usr/share/man/man8/resetusb.8
 ```
 
 Tarball runtime prerequisite: install the system `libusb-1.0` runtime first, for example `libusb-1.0-0` on Debian/Ubuntu or `libusb1` on Fedora.
@@ -171,24 +171,24 @@ Tarball runtime prerequisite: install the system `libusb-1.0` runtime first, for
 Verify an artifact:
 
 ```bash
-sha256sum -c resetusb-v2.0.3-ubuntu-amd64.deb.sha256
+sha256sum -c resetusb-vX.Y.Z-ubuntu-amd64.deb.sha256
 ```
 
 Verify Sigstore provenance (keyless):
 
 ```bash
 cosign verify-blob \
-  --bundle resetusb-v2.0.3-ubuntu-amd64.deb.sigstore.json \
+  --bundle resetusb-vX.Y.Z-ubuntu-amd64.deb.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release-builder\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  resetusb-v2.0.3-ubuntu-amd64.deb
+  resetusb-vX.Y.Z-ubuntu-amd64.deb
 ```
 
 Verify the GitHub provenance attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-v2.0.3-ubuntu-amd64.deb \
+  resetusb-vX.Y.Z-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml
 ```
@@ -197,7 +197,7 @@ Verify the GitHub SBOM attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-v2.0.3-ubuntu-amd64.deb \
+  resetusb-vX.Y.Z-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml \
   --predicate-type https://spdx.dev/Document/v2.3

@@ -99,9 +99,9 @@ run_deb_test() {
 			apt-get install -y --no-install-recommends ca-certificates passwd
 			dpkg-deb -I ./dist/'"$(basename "${package_file}")"' | grep -q "Package: resetusb"
 			dpkg-deb -I ./dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
+			dpkg-deb -c ./dist/'"$(basename "${package_file}")"' | grep -Eq "usr/share/man/man8/resetusb\\.8(\\.gz)?$"
 			apt-get install -y ./dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
-			find /usr/share/man/man8 -maxdepth 1 -type f -name "resetusb.8*" | grep -q .
 			ldd /usr/sbin/resetusb | grep -q libusb
 			useradd -m tester
 			set +e
@@ -150,9 +150,9 @@ run_rpm_test() {
 		sh -euxc '
 			rpm -qpi ./dist/'"$(basename "${package_file}")"' | grep -Eq "^Name[[:space:]]*: resetusb$"
 			rpm -qpi ./dist/'"$(basename "${package_file}")"' | grep -Eq "^Architecture[[:space:]]*: '"${rpm_arch}"'$"
+			rpm -qlp ./dist/'"$(basename "${package_file}")"' | grep -Eq "^/usr/share/man/man8/resetusb\\.8(\\.gz)?$"
 			dnf install -y shadow-utils util-linux ./dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
-			find /usr/share/man/man8 -maxdepth 1 -type f -name "resetusb.8*" | grep -q .
 			ldd /usr/sbin/resetusb | grep -q libusb
 			useradd -m tester
 			set +e

@@ -20,7 +20,7 @@ Maintainer response target:
 
 Include:
 
-- Affected semver release tag (for example `v2.0.3`) or commit SHA
+- Affected semver release tag (for example `vX.Y.Z`) or commit SHA
 - Reproduction steps
 - Impact scope
 - Any logs or proof-of-concept details
