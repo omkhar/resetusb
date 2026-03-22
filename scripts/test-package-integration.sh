@@ -101,6 +101,7 @@ run_deb_test() {
 			dpkg-deb -I ./dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
 			apt-get install -y ./dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
+			find /usr/share/man/man8 -maxdepth 1 -type f -name "resetusb.8*" | grep -q .
 			ldd /usr/sbin/resetusb | grep -q libusb
 			useradd -m tester
 			set +e
@@ -114,6 +115,7 @@ run_deb_test() {
 			tar -xzf ./dist/'"$(basename "${tarball_file}")"' -C /tmp/tarball
 			binary="$(find /tmp/tarball -type f -name resetusb | head -n 1)"
 			test -x "$binary"
+			find /tmp/tarball -type f -name "resetusb.8*" | grep -q .
 			ldd "$binary" | grep -q libusb
 			set +e
 			su -s /bin/sh -c "$binary" tester >/tmp/tar.out 2>/tmp/tar.err
@@ -150,6 +152,7 @@ run_rpm_test() {
 			rpm -qpi ./dist/'"$(basename "${package_file}")"' | grep -Eq "^Architecture[[:space:]]*: '"${rpm_arch}"'$"
 			dnf install -y shadow-utils util-linux ./dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
+			find /usr/share/man/man8 -maxdepth 1 -type f -name "resetusb.8*" | grep -q .
 			ldd /usr/sbin/resetusb | grep -q libusb
 			useradd -m tester
 			set +e
@@ -163,6 +166,7 @@ run_rpm_test() {
 			tar -xzf ./dist/'"$(basename "${tarball_file}")"' -C /tmp/tarball
 			binary="$(find /tmp/tarball -type f -name resetusb | head -n 1)"
 			test -x "$binary"
+			find /tmp/tarball -type f -name "resetusb.8*" | grep -q .
 			ldd "$binary" | grep -q libusb
 			set +e
 			su -s /bin/sh -c "$binary" tester >/tmp/tar.out 2>/tmp/tar.err

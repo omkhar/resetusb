@@ -269,7 +269,7 @@ install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man8/resetusb.8
 %files
 %license %{_licensedir}/resetusb/LICENSE
 %doc %{_docdir}/resetusb/README.md
-%{_mandir}/man8/resetusb.8
+%{_mandir}/man8/resetusb.8*
 %attr(0755,root,root) %{_sbindir}/resetusb
 EOF
 
