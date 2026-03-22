@@ -15,10 +15,9 @@ on:
         description: Git ref for the signed source tag to build.
         required: true
         type: string
-      verify_source_ref:
-        description: Source ref to require during attestation verification.
-        required: false
-        default: ""
+      source_digest:
+        description: Immutable commit digest resolved from the signed source tag.
+        required: true
         type: string
     outputs:
       primary_artifacts:
@@ -65,6 +64,22 @@ jobs:
           fetch-depth: 0
           path: source
           persist-credentials: false
+      - name: Verify source digest matches signed tag
+        env:
+          SOURCE_DIGEST: ${{ inputs.source_digest }}
+        run: |
+          set -euo pipefail
+          checked_out_sha="$(git -C source rev-parse HEAD)"
+
+          if [[ ! "${SOURCE_DIGEST}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Source digest must be an immutable commit digest" >&2
+            exit 1
+          fi
+
+          if [[ "${checked_out_sha}" != "${SOURCE_DIGEST}" ]]; then
+            echo "Signed source tag resolved to ${checked_out_sha}, expected ${SOURCE_DIGEST}" >&2
+            exit 1
+          fi
       - name: Validate semver release tag
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
@@ -172,6 +187,51 @@ jobs:
             "${SYFT_CMD}" "$artifact" \
               -o "spdx-json=${artifact}.spdx.json"
           done
+      - name: Generate release manifest
+        env:
+          BUILDER_SHA: ${{ inputs.builder_sha }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_DIGEST: ${{ inputs.source_digest }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          dist = Path("source/dist")
+          primary_artifacts = {}
+
+          for path in sorted(dist.iterdir()):
+              if not path.is_file():
+                  continue
+
+              name = path.name
+              if name.endswith(".sha256") or name.endswith(".sigstore.json") or name.endswith(".spdx.json") or name.endswith("-release-manifest.json"):
+                  continue
+
+              primary_artifacts[name] = {
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+              }
+
+          if not primary_artifacts:
+              raise SystemExit("no primary artifacts were built")
+
+          manifest = {
+              "format_version": 1,
+              "release_tag": os.environ["RELEASE_TAG"],
+              "source_digest": os.environ["SOURCE_DIGEST"],
+              "builder_digest": os.environ["BUILDER_SHA"],
+              "builder_workflow": f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/.github/workflows/release-builder.yml@refs/heads/main',
+              "primary_artifacts": primary_artifacts,
+          }
+
+          manifest_path = dist / f'resetusb-{os.environ["RELEASE_TAG"]}-release-manifest.json'
+          manifest_path.write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
       - name: Refresh release checksums
         run: |
           set -euo pipefail
@@ -230,7 +290,7 @@ jobs:
               if not path.is_file():
                   continue
               name = path.name
-              if name.endswith(".sha256") or name.endswith(".sigstore.json") or name.endswith(".spdx.json"):
+              if name.endswith(".sha256") or name.endswith(".sigstore.json") or name.endswith(".spdx.json") or name.endswith("-release-manifest.json"):
                   continue
               if "/" in name or "\\" in name or not name.replace(".", "").replace("-", "").replace("_", "").isalnum():
                   raise SystemExit(f"unexpected artifact name: {name}")
@@ -301,18 +361,15 @@ jobs:
       - name: Verify GitHub provenance attestation
         env:
           ARTIFACT_PATH: ${{ steps.artifact.outputs.path }}
+          BUILDER_SHA: ${{ inputs.builder_sha }}
           GH_TOKEN: ${{ github.token }}
-          VERIFY_SOURCE_REF: ${{ inputs.verify_source_ref }}
         run: |
           set -euo pipefail
           verify_args=(
             --repo "${GITHUB_REPOSITORY}"
             --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release-builder.yml"
+            --signer-digest "${BUILDER_SHA}"
           )
-
-          if [[ -n "${VERIFY_SOURCE_REF}" ]]; then
-            verify_args+=(--source-ref "${VERIFY_SOURCE_REF}")
-          fi
 
           for attempt in 1 2 3 4 5; do
             if gh attestation verify "${ARTIFACT_PATH}" "${verify_args[@]}"; then
@@ -326,18 +383,15 @@ jobs:
       - name: Verify GitHub SBOM attestation
         env:
           ARTIFACT_PATH: ${{ steps.artifact.outputs.path }}
+          BUILDER_SHA: ${{ inputs.builder_sha }}
           GH_TOKEN: ${{ github.token }}
-          VERIFY_SOURCE_REF: ${{ inputs.verify_source_ref }}
         run: |
           set -euo pipefail
           verify_args=(
             --repo "${GITHUB_REPOSITORY}"
             --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release-builder.yml"
+            --signer-digest "${BUILDER_SHA}"
           )
-
-          if [[ -n "${VERIFY_SOURCE_REF}" ]]; then
-            verify_args+=(--source-ref "${VERIFY_SOURCE_REF}")
-          fi
 
           for attempt in 1 2 3 4 5; do
             if gh attestation verify "${ARTIFACT_PATH}" \

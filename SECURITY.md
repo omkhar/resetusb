@@ -31,7 +31,7 @@ Please include:
 - The runtime refuses mismatched real/effective UID execution contexts.
 - CI covers static analysis, shell linting, unit tests, sanitizers, package validation, fuzzing, and secret scanning.
 - Releases are published only after `release-preflight` succeeds.
-- Public releases are built in GitHub Actions from signed annotated semver tags.
+- Public releases are built in GitHub Actions from signed annotated semver tags. The trusted builder workflow verifies the signed tag before building, and the published release manifest records the commit digest that was built.
 - Release artifacts include generic tarballs, distro-specific packages, the `resetusb(8)` manual page, SHA256 checksums, SPDX JSON SBOMs, Sigstore keyless bundles (`.sigstore.json`), and GitHub provenance plus SBOM attestations.
 
 ## Out of Scope

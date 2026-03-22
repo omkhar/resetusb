@@ -103,6 +103,7 @@ Notes:
 ## Releases
 
 - Public releases use semantic versioning and signed annotated tags in the form `vMAJOR.MINOR.PATCH`.
+- Release tags are immutable. If release contents need to change, a new patch version is cut.
 - Publication only happens after `release-preflight` succeeds.
 - Tarballs include the binary and the `resetusb(8)` manual page. Distro packages install both.
 - Each release includes tarballs for:
@@ -118,7 +119,8 @@ Notes:
   - an SPDX JSON SBOM (`.spdx.json`)
   - a Sigstore keyless bundle for the artifact (`.sigstore.json`)
   - a Sigstore keyless bundle for the checksum (`.sha256.sigstore.json`)
-- GitHub Actions also emits per-asset provenance and SBOM attestations before publication.
+- Each release also includes a builder-signed release manifest (`resetusb-vMAJOR.MINOR.PATCH-release-manifest.json`) with the release tag, the commit digest resolved from the signed tag, the trusted builder digest, and SHA256 hashes for the primary artifacts.
+- GitHub Actions also emits per-asset provenance and SBOM attestations before publication, and publish re-verifies them against the trusted builder workflow revision.
 - Maintainer release steps are documented in `CONTRIBUTING.md`.
 
 Release validation matrix:
@@ -179,26 +181,40 @@ cosign verify-blob \
   resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb
 ```
 
-Verify the GitHub provenance attestation:
+Verify the builder-signed release manifest:
 
 ```bash
-gh attestation verify \
-  resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb \
-  --repo omkhar/resetusb \
-  --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml
+cosign verify-blob \
+  --bundle resetusb-vMAJOR.MINOR.PATCH-release-manifest.json.sigstore.json \
+  --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release-builder\.yml@refs/heads/main$' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  resetusb-vMAJOR.MINOR.PATCH-release-manifest.json
 ```
 
-Verify the GitHub SBOM attestation:
+Verify the GitHub provenance attestation for an artifact:
 
 ```bash
+builder_digest="$(jq -r '.builder_digest' resetusb-vMAJOR.MINOR.PATCH-release-manifest.json)"
 gh attestation verify \
   resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml \
+  --signer-digest "$builder_digest"
+```
+
+Verify the GitHub SBOM attestation for an artifact:
+
+```bash
+builder_digest="$(jq -r '.builder_digest' resetusb-vMAJOR.MINOR.PATCH-release-manifest.json)"
+gh attestation verify \
+  resetusb-vMAJOR.MINOR.PATCH-ubuntu-amd64.deb \
+  --repo omkhar/resetusb \
+  --signer-workflow omkhar/resetusb/.github/workflows/release-builder.yml \
+  --signer-digest "$builder_digest" \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
-Public release provenance is rooted in the trusted builder workflow on `main`, which verifies the signed source tag before building.
+Public release provenance is rooted in the trusted builder workflow on `main`. The builder also signs a release manifest that records the artifact digests, the builder revision, and the commit digest resolved from the signed release tag.
 
 ## Community
 

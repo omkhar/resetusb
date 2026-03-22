@@ -13,6 +13,9 @@ WORK_ROOT="${WORK_ROOT:-${REPO_ROOT}}"
 DIST_DIR="${DIST_DIR:-${REPO_ROOT}/dist}"
 PACKAGE_TEST_CHANNELS="${PACKAGE_TEST_CHANNELS:-stable unstable}"
 PACKAGE_TEST_ARCHES="${PACKAGE_TEST_ARCHES:-amd64 arm64 armv7}"
+SEMVER_RELEASE_TAG_REGEX='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+DEV_ARTIFACT_VERSION_REGEX='^dev-[0-9a-f]{12}$'
+ARTIFACT_VERSION_RESOLVED=""
 
 declare -A ARCH_PLATFORM=(
 	[amd64]="linux/amd64"
@@ -31,10 +34,108 @@ declare -A ARCH_RPM=(
 	[arm64]="aarch64"
 )
 
-find_artifact() {
-	local pattern="$1"
+require_artifact_version() {
+	local version="$1"
 
-	find "${DIST_DIR}" -maxdepth 1 -type f -name "${pattern}" | sort | head -n 1
+	if [[ "${version}" =~ ${SEMVER_RELEASE_TAG_REGEX} ]]; then
+		return
+	fi
+
+	if [[ "${version}" =~ ${DEV_ARTIFACT_VERSION_REGEX} ]]; then
+		return
+	fi
+
+	echo "Unexpected artifact version: ${version}" >&2
+	exit 1
+}
+
+discover_artifact_version() {
+	local version_override="${ARTIFACT_VERSION:-}"
+	local name
+	local version
+	local -a versions=()
+	local -a unique_versions=()
+
+	if [[ -n "${version_override}" ]]; then
+		require_artifact_version "${version_override}"
+		printf '%s\n' "${version_override}"
+		return
+	fi
+
+	while IFS= read -r name; do
+		case "${name}" in
+			*.sha256|*.sigstore.json|*.spdx.json|*-release-manifest.json)
+				continue
+				;;
+			resetusb-*-linux-amd64.tar.gz)
+				version="${name#resetusb-}"
+				version="${version%-linux-amd64.tar.gz}"
+				;;
+			resetusb-*-linux-arm64.tar.gz)
+				version="${name#resetusb-}"
+				version="${version%-linux-arm64.tar.gz}"
+				;;
+			resetusb-*-linux-armv7.tar.gz)
+				version="${name#resetusb-}"
+				version="${version%-linux-armv7.tar.gz}"
+				;;
+			resetusb-*-debian-amd64.deb)
+				version="${name#resetusb-}"
+				version="${version%-debian-amd64.deb}"
+				;;
+			resetusb-*-debian-arm64.deb)
+				version="${name#resetusb-}"
+				version="${version%-debian-arm64.deb}"
+				;;
+			resetusb-*-debian-armhf.deb)
+				version="${name#resetusb-}"
+				version="${version%-debian-armhf.deb}"
+				;;
+			resetusb-*-ubuntu-amd64.deb)
+				version="${name#resetusb-}"
+				version="${version%-ubuntu-amd64.deb}"
+				;;
+			resetusb-*-ubuntu-arm64.deb)
+				version="${name#resetusb-}"
+				version="${version%-ubuntu-arm64.deb}"
+				;;
+			resetusb-*-ubuntu-armhf.deb)
+				version="${name#resetusb-}"
+				version="${version%-ubuntu-armhf.deb}"
+				;;
+			resetusb-*-fedora-x86_64.rpm)
+				version="${name#resetusb-}"
+				version="${version%-fedora-x86_64.rpm}"
+				;;
+			*)
+				echo "Unexpected primary artifact in ${DIST_DIR}: ${name}" >&2
+				exit 1
+				;;
+		esac
+
+		require_artifact_version "${version}"
+		versions+=("${version}")
+	done < <(find "${DIST_DIR}" -maxdepth 1 -type f -print | sed 's#.*/##' | sort)
+
+	if [[ ${#versions[@]} -eq 0 ]]; then
+		echo "No primary release artifacts found in ${DIST_DIR}" >&2
+		exit 1
+	fi
+
+	mapfile -t unique_versions < <(printf '%s\n' "${versions[@]}" | sort -u)
+	if [[ ${#unique_versions[@]} -ne 1 ]]; then
+		printf 'Expected exactly one artifact version in %s, found: %s\n' \
+			"${DIST_DIR}" "${unique_versions[*]}" >&2
+		exit 1
+	fi
+
+	printf '%s\n' "${unique_versions[0]}"
+}
+
+artifact_path() {
+	local filename="$1"
+
+	printf '%s/%s\n' "${DIST_DIR}" "${filename}"
 }
 
 require_artifact() {
@@ -80,8 +181,8 @@ run_deb_test() {
 	local package_file
 	local tarball_file
 
-	package_file="$(find_artifact "resetusb-*-${distro}-${package_arch}.deb")"
-	tarball_file="$(find_artifact "resetusb-*-linux-${arch}.tar.gz")"
+	package_file="$(artifact_path "resetusb-${ARTIFACT_VERSION_RESOLVED}-${distro}-${package_arch}.deb")"
+	tarball_file="$(artifact_path "resetusb-${ARTIFACT_VERSION_RESOLVED}-linux-${arch}.tar.gz")"
 	require_artifact "${package_file}"
 	require_artifact "${tarball_file}"
 	verify_artifact_checksum "${package_file}"
@@ -134,8 +235,8 @@ run_rpm_test() {
 	local package_file
 	local tarball_file
 
-	package_file="$(find_artifact "resetusb-*-fedora-${rpm_arch}.rpm")"
-	tarball_file="$(find_artifact "resetusb-*-linux-${arch}.tar.gz")"
+	package_file="$(artifact_path "resetusb-${ARTIFACT_VERSION_RESOLVED}-fedora-${rpm_arch}.rpm")"
+	tarball_file="$(artifact_path "resetusb-${ARTIFACT_VERSION_RESOLVED}-linux-${arch}.tar.gz")"
 	require_artifact "${package_file}"
 	require_artifact "${tarball_file}"
 	verify_artifact_checksum "${package_file}"
@@ -185,6 +286,8 @@ main() {
 		echo "Artifact directory not found: ${DIST_DIR}" >&2
 		exit 1
 	fi
+
+	ARTIFACT_VERSION_RESOLVED="$(discover_artifact_version)"
 
 	for channel in ${PACKAGE_TEST_CHANNELS}; do
 		for arch in ${PACKAGE_TEST_ARCHES}; do
