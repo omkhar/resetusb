@@ -101,6 +101,8 @@ jobs:
             -w /work \
             "resetusb-release-builder:${GITHUB_SHA}" \
             bash -lc './scripts/build-release-artifacts.sh'
+      - name: Normalize artifact ownership
+        run: sudo chown -R "$(id -u):$(id -g)" dist
       - name: Install Syft
         id: syft
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
