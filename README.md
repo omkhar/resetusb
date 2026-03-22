@@ -30,9 +30,14 @@ every enumerated USB device it can open.
 - This can interrupt keyboards, storage, serial devices, and USB-backed networking.
 - Use it only during controlled maintenance or recovery work.
 
-## Requirements
+## Runtime Requirements
 
 - Linux
+- Root privileges
+- A system `libusb-1.0` runtime when using the generic tarball (`libusb-1.0-0` on Debian/Ubuntu or `libusb1` on Fedora)
+
+## Build From Source
+
 - `libusb-1.0` development headers (`libusb-1.0-0-dev` on Debian/Ubuntu)
 - C toolchain (`gcc`/`clang`) and `make`
 

@@ -13,7 +13,9 @@ Maintainers may remove comments, close discussions, reject contributions, or blo
 
 ## Reporting
 
-Report conduct concerns privately to the maintainers through GitHub security advisories or by opening a confidential maintainer contact request in this repository.
+Report conduct concerns privately to the maintainer using the contact details listed at https://omkhar.net.
+
+If you cannot use a private channel, open a minimal public issue requesting a private follow-up.
 
 When reporting, include links/screenshots and a short timeline so maintainers can act quickly.
 
