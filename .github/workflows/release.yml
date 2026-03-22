@@ -27,7 +27,8 @@ jobs:
       source_ref: ${{ steps.resolve.outputs.source_ref }}
       verify_source_ref: ${{ steps.resolve.outputs.verify_source_ref }}
     steps:
-      - name: Resolve trusted release inputs
+      - id: resolve
+        name: Resolve trusted release inputs
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
