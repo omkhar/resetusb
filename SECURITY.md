@@ -20,7 +20,7 @@ Maintainer response target:
 
 Include:
 
-- Affected version or commit SHA
+- Affected semver release tag (for example `v2.0.0`) or commit SHA
 - Reproduction steps
 - Impact scope
 - Any logs or proof-of-concept details
@@ -34,7 +34,7 @@ Include:
 - ClusterFuzzLite provides presubmit and scheduled fuzzing coverage for input sanitization paths.
 - CI secret scanning uses diff-based `gitleaks` on pull requests and pushes, with full-history scanning in weekly deep validation and release preflight.
 - Release publication is gated by a full `release-preflight` pass before artifacts are uploaded.
-- Public releases are generated in GitHub Actions from signed annotated tags that are verified against the pinned maintainer release key.
+- Public releases are generated in GitHub Actions from signed annotated semver tags that are verified against the pinned maintainer release key.
 - Release artifacts include generic tarballs, distro-specific packages, SHA256 checksums, SPDX JSON SBOMs, Sigstore keyless bundles (`.sigstore.json`), and per-asset GitHub provenance plus SBOM attestations.
 
 ## Out of Scope

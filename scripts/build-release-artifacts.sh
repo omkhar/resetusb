@@ -28,6 +28,7 @@ SHORT_SHA="$(resolve_short_sha)"
 REF_TYPE="${GITHUB_REF_TYPE:-}"
 ARTIFACT_VERSION_OVERRIDE="${ARTIFACT_VERSION:-}"
 PACKAGE_VERSION_OVERRIDE="${PACKAGE_VERSION:-}"
+SEMVER_RELEASE_TAG_REGEX='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 
 if [[ $# -gt 0 ]]; then
 	ARTIFACT_VERSION="$1"
@@ -37,6 +38,16 @@ elif [[ -n "${GITHUB_REF_NAME:-}" && "${REF_TYPE}" == "tag" ]]; then
 	ARTIFACT_VERSION="${GITHUB_REF_NAME}"
 else
 	ARTIFACT_VERSION="dev-${SHORT_SHA}"
+fi
+
+if [[ "${REF_TYPE}" == "tag" && ! "${ARTIFACT_VERSION}" =~ ${SEMVER_RELEASE_TAG_REGEX} ]]; then
+	echo "Release tags must follow semver: vMAJOR.MINOR.PATCH" >&2
+	exit 1
+fi
+
+if [[ "${ARTIFACT_VERSION}" == v* && ! "${ARTIFACT_VERSION}" =~ ${SEMVER_RELEASE_TAG_REGEX} ]]; then
+	echo "Release-style artifact versions must follow semver: vMAJOR.MINOR.PATCH" >&2
+	exit 1
 fi
 
 if [[ -n "${PACKAGE_VERSION_OVERRIDE}" ]]; then

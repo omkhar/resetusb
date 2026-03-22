@@ -83,7 +83,7 @@ The CI pipeline enforces:
 
 ## Public Releases
 
-- Public release artifacts are published from signed annotated Git tags (`v*`) via `.github/workflows/release.yml`.
+- Public releases use semantic versioning and are published from signed annotated Git tags in the form `vMAJOR.MINOR.PATCH` via `.github/workflows/release.yml`.
 - Releases are only published after the `release-preflight` job passes.
 - Each release includes generic tarballs for:
   - `linux-amd64`
@@ -117,49 +117,49 @@ Install examples:
 Debian:
 
 ```bash
-sudo apt-get install ./resetusb-<tag>-debian-amd64.deb
+sudo apt-get install ./resetusb-v2.0.0-debian-amd64.deb
 ```
 
 Ubuntu:
 
 ```bash
-sudo apt-get install ./resetusb-<tag>-ubuntu-amd64.deb
+sudo apt-get install ./resetusb-v2.0.0-ubuntu-amd64.deb
 ```
 
 Fedora:
 
 ```bash
-sudo dnf install ./resetusb-<tag>-fedora-x86_64.rpm
+sudo dnf install ./resetusb-v2.0.0-fedora-x86_64.rpm
 ```
 
 Generic tarball:
 
 ```bash
-tar -xzf resetusb-<tag>-linux-amd64.tar.gz
-sudo install -m 0755 <tag>-linux-amd64/resetusb /usr/sbin/resetusb
+tar -xzf resetusb-v2.0.0-linux-amd64.tar.gz
+sudo install -m 0755 v2.0.0-linux-amd64/resetusb /usr/sbin/resetusb
 ```
 
 Verify an artifact:
 
 ```bash
-sha256sum -c resetusb-<tag>-ubuntu-amd64.deb.sha256
+sha256sum -c resetusb-v2.0.0-ubuntu-amd64.deb.sha256
 ```
 
 Verify Sigstore provenance (keyless):
 
 ```bash
 cosign verify-blob \
-  --bundle resetusb-<tag>-ubuntu-amd64.deb.sigstore.json \
+  --bundle resetusb-v2.0.0-ubuntu-amd64.deb.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release\.yml@refs/tags/.*$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  resetusb-<tag>-ubuntu-amd64.deb
+  resetusb-v2.0.0-ubuntu-amd64.deb
 ```
 
 Verify the GitHub provenance attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-<tag>-ubuntu-amd64.deb \
+  resetusb-v2.0.0-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release.yml
 ```
@@ -168,7 +168,7 @@ Verify the GitHub SBOM attestation:
 
 ```bash
 gh attestation verify \
-  resetusb-<tag>-ubuntu-amd64.deb \
+  resetusb-v2.0.0-ubuntu-amd64.deb \
   --repo omkhar/resetusb \
   --signer-workflow omkhar/resetusb/.github/workflows/release.yml \
   --predicate-type https://spdx.dev/Document/v2.3
