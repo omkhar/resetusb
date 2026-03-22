@@ -40,6 +40,7 @@ RUN set -eux; \
     echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
+      clang \
       clang-format \
       clang-tools \
       cppcheck \
@@ -61,6 +62,9 @@ docker run --rm --platform=linux/amd64 \
 		make clean
 		make CC=gcc
 		make CC=gcc test
+		make clean
+		make CC=clang
+		make CC=clang test
 		make lint
 		make check-format
 		scan-build --status-bugs --keep-empty --exclude /usr/include \

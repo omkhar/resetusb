@@ -45,6 +45,31 @@ require_artifact() {
 	fi
 }
 
+verify_artifact_checksum() {
+	local artifact="$1"
+	local checksum_file="${artifact}.sha256"
+
+	require_artifact "${checksum_file}"
+	if command -v sha256sum >/dev/null 2>&1; then
+		(
+			cd "$(dirname "${artifact}")"
+			sha256sum --check --strict "$(basename "${checksum_file}")" >/dev/null
+		)
+		return
+	fi
+
+	if command -v shasum >/dev/null 2>&1; then
+		(
+			cd "$(dirname "${artifact}")"
+			shasum -a 256 --check "$(basename "${checksum_file}")" >/dev/null
+		)
+		return
+	fi
+
+	echo "sha256sum or shasum is required to verify release checksums" >&2
+	exit 1
+}
+
 run_deb_test() {
 	local distro="$1"
 	local channel="$2"
@@ -58,6 +83,8 @@ run_deb_test() {
 	tarball_file="$(find_artifact "resetusb-*-linux-${arch}.tar.gz")"
 	require_artifact "${package_file}"
 	require_artifact "${tarball_file}"
+	verify_artifact_checksum "${package_file}"
+	verify_artifact_checksum "${tarball_file}"
 
 	echo "==> ${distro}/${channel}/${arch}"
 	docker run --rm \
@@ -69,8 +96,11 @@ run_deb_test() {
 			export DEBIAN_FRONTEND=noninteractive
 			apt-get update
 			apt-get install -y --no-install-recommends ca-certificates passwd
+			dpkg-deb -I ./dist/'"$(basename "${package_file}")"' | grep -q "Package: resetusb"
+			dpkg-deb -I ./dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
 			apt-get install -y ./dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
+			ldd /usr/sbin/resetusb | grep -q libusb
 			useradd -m tester
 			set +e
 			su -s /bin/sh -c /usr/sbin/resetusb tester >/tmp/pkg.out 2>/tmp/pkg.err
@@ -83,6 +113,7 @@ run_deb_test() {
 			tar -xzf ./dist/'"$(basename "${tarball_file}")"' -C /tmp/tarball
 			binary="$(find /tmp/tarball -type f -name resetusb | head -n 1)"
 			test -x "$binary"
+			ldd "$binary" | grep -q libusb
 			set +e
 			su -s /bin/sh -c "$binary" tester >/tmp/tar.out 2>/tmp/tar.err
 			rc=$?
@@ -104,6 +135,8 @@ run_rpm_test() {
 	tarball_file="$(find_artifact "resetusb-*-linux-${arch}.tar.gz")"
 	require_artifact "${package_file}"
 	require_artifact "${tarball_file}"
+	verify_artifact_checksum "${package_file}"
+	verify_artifact_checksum "${tarball_file}"
 
 	echo "==> fedora/${channel}/${arch}"
 	docker run --rm \
@@ -112,8 +145,11 @@ run_rpm_test() {
 		-w /work \
 		"${image}" \
 		sh -euxc '
+			rpm -qpi ./dist/'"$(basename "${package_file}")"' | grep -Eq "^Name[[:space:]]*: resetusb$"
+			rpm -qpi ./dist/'"$(basename "${package_file}")"' | grep -Eq "^Architecture[[:space:]]*: '"${rpm_arch}"'$"
 			dnf install -y shadow-utils util-linux ./dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
+			ldd /usr/sbin/resetusb | grep -q libusb
 			useradd -m tester
 			set +e
 			su -s /bin/sh -c /usr/sbin/resetusb tester >/tmp/pkg.out 2>/tmp/pkg.err
@@ -126,6 +162,7 @@ run_rpm_test() {
 			tar -xzf ./dist/'"$(basename "${tarball_file}")"' -C /tmp/tarball
 			binary="$(find /tmp/tarball -type f -name resetusb | head -n 1)"
 			test -x "$binary"
+			ldd "$binary" | grep -q libusb
 			set +e
 			su -s /bin/sh -c "$binary" tester >/tmp/tar.out 2>/tmp/tar.err
 			rc=$?

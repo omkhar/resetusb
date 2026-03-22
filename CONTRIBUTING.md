@@ -18,7 +18,7 @@ Debian/Ubuntu:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
+sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
 ```
 
 ## Required Local Checks
@@ -34,6 +34,12 @@ make check-format
 scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
 make sanitize
 make release-preflight
+```
+
+Optional deeper local check:
+
+```bash
+make fuzz FUZZ_TIME=10
 ```
 
 Auto-format source files with:
@@ -54,7 +60,7 @@ make format
 
 - Create and push a signed annotated tag matching `v*` (for example `git tag -s v1.2.3 -m "resetusb release v1.2.3"`).
 - Run `make release-preflight` before cutting the tag.
-- GitHub Actions `release.yml` runs `release-preflight`, then builds generic tarballs plus Debian/Ubuntu/Fedora packages, signs each release artifact with Sigstore, verifies the signatures, and publishes the release.
+- GitHub Actions `release.yml` runs `release-preflight`, then builds generic tarballs plus Debian/Ubuntu/Fedora packages, generates SPDX JSON SBOMs, signs each release artifact with Sigstore, emits per-asset GitHub provenance and SBOM attestations, verifies those attestations, and publishes the release.
 - Release packaging is validated against stable and unstable distro channels before publication:
   - Debian stable and sid on `amd64`, `arm64`, and `armv7`
   - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`

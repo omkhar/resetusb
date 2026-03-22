@@ -14,100 +14,105 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  CCACHE_DIR: ${{ github.workspace }}/.ccache
-  CCACHE_MAXSIZE: 128M
-
 jobs:
-  ci-security:
-    name: ci-security
+  detect-package-changes:
+    name: detect-package-changes
+    runs-on: ubuntu-latest
+    outputs:
+      package_smoke: ${{ steps.filter.outputs.package_smoke }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Decide whether package smoke tests should run
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "package_smoke=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [[ -z "${BASE_SHA}" || "${BASE_SHA}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "package_smoke=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          package_smoke=false
+          while IFS= read -r path; do
+            case "${path}" in
+              Makefile|docker/*|scripts/build-release-artifacts.sh|scripts/release-preflight.sh|scripts/test-package-integration.sh|.github/workflows/*)
+                package_smoke=true
+                break
+                ;;
+            esac
+          done < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+
+          echo "package_smoke=${package_smoke}" >> "${GITHUB_OUTPUT}"
+
+  static-analysis:
+    name: static-analysis
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Install security tooling
+      - name: Install static analysis tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
-      - name: Lint and format checks
+          sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
+      - name: Run lint, format, and clang static analysis
         run: |
           make lint
           make check-format
-      - name: Clang static analyzer
-        run: scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
+          scan-build --status-bugs --keep-empty --exclude /usr/include make clean all test
 
-  ci-build:
-    name: ci-build
-    needs: ci-security
+  unit-tests:
+    name: unit-tests (${{ matrix.cc }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Restore compiler cache
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'resetusb.h', 'tests/resetusb_unit_tests.c', 'Makefile', '.clang-format') }}
-          restore-keys: |
-            resetusb-ccache-${{ runner.os }}-
-      - name: Install dependencies
+      - name: Install compiler and build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libusb-1.0-0-dev ccache
-      - name: Build
+          sudo apt-get install -y build-essential clang libusb-1.0-0-dev
+      - name: Build and run unit tests
         run: |
-          mkdir -p "$CCACHE_DIR"
-          ccache --zero-stats || true
-          make CC="ccache gcc"
-          ccache --show-stats || true
+          make clean
+          make CC="${{ matrix.cc }}" test
 
-  ci-test:
-    name: ci-test
-    needs: ci-build
+  sanitize:
+    name: sanitize
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Restore compiler cache
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: resetusb-ccache-${{ runner.os }}-${{ hashFiles('resetusb.c', 'resetusb.h', 'tests/resetusb_unit_tests.c', 'Makefile', '.clang-format') }}
-          restore-keys: |
-            resetusb-ccache-${{ runner.os }}-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libusb-1.0-0-dev ccache
-      - name: Run unit tests and verify binary exists
-        run: |
-          mkdir -p "$CCACHE_DIR"
-          ccache --zero-stats || true
-          make CC="ccache gcc" test
-          test -x ./resetusb
-          ccache --show-stats || true
-
-  ci-sanitize:
-    name: ci-sanitize
-    needs: ci-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - name: Install dependencies
+      - name: Install sanitizer dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libusb-1.0-0-dev
-      - name: Run address/undefined sanitizers
-        run: make sanitize CC=gcc
+      - name: Run address and undefined behavior sanitizers
+        run: |
+          make clean
+          make sanitize CC=gcc
 
-  ci-package-integration:
-    name: ci-package-integration
-    needs: ci-test
+  package-smoke:
+    name: package-smoke
+    needs: detect-package-changes
+    if: needs.detect-package-changes.outputs.package_smoke == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -128,5 +133,8 @@ jobs:
             -w /work \
             "resetusb-release-builder:${GITHUB_SHA}" \
             bash -lc './scripts/build-release-artifacts.sh'
-      - name: Run stable and unstable package integration tests
-        run: ./scripts/test-package-integration.sh
+      - name: Run stable package smoke tests
+        run: |
+          PACKAGE_TEST_CHANNELS=stable \
+          PACKAGE_TEST_ARCHES=amd64 \
+          ./scripts/test-package-integration.sh

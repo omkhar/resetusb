@@ -21,18 +21,56 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          fetch-depth: 0
           persist-credentials: false
 
+      - name: Decide whether presubmit fuzzing should run
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "run_fuzzing=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [[ -z "${BASE_SHA}" || "${BASE_SHA}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "run_fuzzing=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          run_fuzzing=false
+          while IFS= read -r path; do
+            case "${path}" in
+              *.c|*.h|.clusterfuzzlite/*|.github/workflows/*|Makefile|docker/*|scripts/*|tests/*)
+                run_fuzzing=true
+                break
+                ;;
+            esac
+          done < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+
+          echo "run_fuzzing=${run_fuzzing}" >> "${GITHUB_OUTPUT}"
+
       - name: Build fuzzers
+        if: steps.filter.outputs.run_fuzzing == 'true'
         uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           language: c
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run fuzzers
+        if: steps.filter.outputs.run_fuzzing == 'true'
         uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           language: c
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fuzz-seconds: 300
           mode: code-change
+
+      - name: Report skipped presubmit fuzzing
+        if: steps.filter.outputs.run_fuzzing != 'true'
+        run: echo "Skipping presubmit fuzzing because no C, build, or fuzzing inputs changed."

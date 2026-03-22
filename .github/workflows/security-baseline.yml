@@ -31,13 +31,44 @@ jobs:
         with:
           go-version: "1.25.7"
           check-latest: true
-          # This job installs a single tool and the repo has no go.mod/go.sum to cache.
           cache: false
 
       - name: Install gitleaks
         run: GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@v8.30.0
 
-      - name: Scan repository for hardcoded secrets
+      - name: Decide scan scope
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "mode=history" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [[ -n "${BASE_SHA}" && "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]]; then
+            echo "mode=range" >> "${GITHUB_OUTPUT}"
+            echo "range=${BASE_SHA}..${HEAD_SHA}" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "mode=history" >> "${GITHUB_OUTPUT}"
+
+      - name: Scan new commits for hardcoded secrets
+        if: steps.scope.outputs.mode == 'range'
+        run: |
+          "$(go env GOPATH)/bin/gitleaks" git . \
+            --log-opts="${{ steps.scope.outputs.range }}" \
+            --no-banner \
+            --redact \
+            --exit-code 1
+
+      - name: Scan reachable Git history for hardcoded secrets
+        if: steps.scope.outputs.mode == 'history'
         run: |
           "$(go env GOPATH)/bin/gitleaks" git . \
             --log-opts="--all" \

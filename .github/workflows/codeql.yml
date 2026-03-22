@@ -30,7 +30,7 @@ jobs:
           - language: actions
             build-mode: none
           - language: c-cpp
-            build-mode: autobuild
+            build-mode: manual
 
     steps:
       - name: Checkout
@@ -53,6 +53,13 @@ jobs:
           build-mode: ${{ matrix.build-mode }}
           config: |
             threat-models: local
+
+      - name: Build for CodeQL
+        if: matrix.language == 'c-cpp'
+        run: |
+          make clean
+          make CC=gcc
+          make CC=gcc test
 
       - name: Analyze
         uses: github/codeql-action/analyze@c6f931105cb2c34c8f901cc885ba1e2e259cf745 # v4.34.0

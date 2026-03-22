@@ -10,14 +10,11 @@ It is designed for operational recovery workflows where USB devices are stuck or
 Current GitHub Actions workflow status:
 
 - [CI](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml): [![CI](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml)
+- [Nightly Deep Validation](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml): [![Nightly Deep Validation](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml)
 - [ClusterFuzzLite Batch](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml): [![ClusterFuzzLite Batch](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml)
 - [ClusterFuzzLite PR](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-pr.yml): [![ClusterFuzzLite PR](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-pr.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-pr.yml)
 - [CodeQL (codeql.yml)](https://github.com/omkhar/resetusb/actions/workflows/codeql.yml): [![CodeQL (codeql.yml)](https://github.com/omkhar/resetusb/actions/workflows/codeql.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/codeql.yml)
-- [CodeQL (dynamic/github-code-scanning/codeql)](https://github.com/omkhar/resetusb/actions/workflows/dynamic/github-code-scanning/codeql): [![CodeQL (dynamic/github-code-scanning/codeql)](https://github.com/omkhar/resetusb/actions/workflows/dynamic/github-code-scanning/codeql/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/dynamic/github-code-scanning/codeql)
-- [Dependabot Updates](https://github.com/omkhar/resetusb/actions/workflows/dynamic/dependabot/dependabot-updates): [![Dependabot Updates](https://github.com/omkhar/resetusb/actions/workflows/dynamic/dependabot/dependabot-updates/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/dynamic/dependabot/dependabot-updates)
 - [Dependency Review](https://github.com/omkhar/resetusb/actions/workflows/dependency-review.yml): [![Dependency Review](https://github.com/omkhar/resetusb/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/dependency-review.yml)
-- [OSV Scanner](https://github.com/omkhar/resetusb/actions/workflows/osv-scanner.yml): [![OSV Scanner](https://github.com/omkhar/resetusb/actions/workflows/osv-scanner.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/osv-scanner.yml)
-- [Package Publish](https://github.com/omkhar/resetusb/actions/workflows/package-publish.yml): [![Package Publish](https://github.com/omkhar/resetusb/actions/workflows/package-publish.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/package-publish.yml)
 - [Release](https://github.com/omkhar/resetusb/actions/workflows/release.yml): [![Release](https://github.com/omkhar/resetusb/actions/workflows/release.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/release.yml)
 - [Scorecard](https://github.com/omkhar/resetusb/actions/workflows/scorecard.yml): [![Scorecard](https://github.com/omkhar/resetusb/actions/workflows/scorecard.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/scorecard.yml)
 - [Security Baseline](https://github.com/omkhar/resetusb/actions/workflows/security-baseline.yml): [![Security Baseline](https://github.com/omkhar/resetusb/actions/workflows/security-baseline.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/security-baseline.yml)
@@ -68,21 +65,20 @@ Additional contributor checks:
 make lint
 make check-format
 make sanitize
+make fuzz FUZZ_TIME=10
 make release-preflight
 ```
 
 The CI pipeline enforces:
 
-- `ci-security`: `make lint`, `make check-format`, and `scan-build`
-- `ci-build`: Linux build with `ccache`
-- `ci-test`: unit tests with `ccache`
-- `ci-sanitize`: AddressSanitizer + UndefinedBehaviorSanitizer test run
-- `ci-package-integration`: signed-release artifact build plus stable/unstable package and tarball smoke tests
-- `osv-scanner`: OSV dependency vulnerability scan for pull requests and pushes to `main`
-- `package-publish`: publishes a minimal GHCR container package from `main` and release tags
+- `ci/static-analysis`: `make lint`, `make check-format`, and `scan-build`
+- `ci/unit-tests`: Linux unit tests with both `gcc` and `clang`
+- `ci/sanitize`: AddressSanitizer + UndefinedBehaviorSanitizer test run
+- `ci/package-smoke`: conditional stable distro smoke tests when release/build plumbing changes
 - `pr-fuzzing`: ClusterFuzzLite presubmit fuzzing for pull requests
 - `batch-fuzzing`: scheduled ClusterFuzzLite batch fuzzing
-- `release-preflight`: release-gating Linux preflight and `gitleaks` scan
+- `security-baseline`: diff-based `gitleaks` scanning on pull requests and pushes to `main`
+- `nightly-deep-validation`: weekly full `release-preflight` execution, including the full package matrix and full-history secret scan
 - `scorecard-analysis`: OpenSSF Scorecard scan on `main`, published to GitHub code scanning and `scorecard.dev`
 
 ## Public Releases
@@ -97,11 +93,12 @@ The CI pipeline enforces:
   - Debian: `amd64`, `arm64`, `armhf`
   - Ubuntu: `amd64`, `arm64`, `armhf`
   - Fedora: `x86_64`
-- A minimal GHCR container package is also published as `ghcr.io/omkhar/resetusb:<ref>`.
 - Every primary artifact ships with:
   - a SHA256 checksum (`.sha256`)
+  - an SPDX JSON SBOM (`.spdx.json`)
   - a Sigstore keyless bundle for the artifact (`.sigstore.json`)
   - a Sigstore keyless bundle for the checksum (`.sha256.sigstore.json`)
+- GitHub Actions also emits per-asset GitHub provenance attestations and GitHub SBOM attestations before publication.
 
 Release validation matrix:
 
@@ -156,6 +153,25 @@ cosign verify-blob \
   --certificate-identity-regexp '^https://github\.com/omkhar/resetusb/\.github/workflows/release\.yml@refs/tags/.*$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   resetusb-<tag>-ubuntu-amd64.deb
+```
+
+Verify the GitHub provenance attestation:
+
+```bash
+gh attestation verify \
+  resetusb-<tag>-ubuntu-amd64.deb \
+  --repo omkhar/resetusb \
+  --signer-workflow omkhar/resetusb/.github/workflows/release.yml
+```
+
+Verify the GitHub SBOM attestation:
+
+```bash
+gh attestation verify \
+  resetusb-<tag>-ubuntu-amd64.deb \
+  --repo omkhar/resetusb \
+  --signer-workflow omkhar/resetusb/.github/workflows/release.yml \
+  --predicate-type https://spdx.dev/Document/v2.3
 ```
 
 ## Collaboration
