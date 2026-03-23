@@ -63,6 +63,11 @@ compare_artifacts() {
 	mapfile -t left_files < <(list_artifacts "${left_dir}")
 	mapfile -t right_files < <(list_artifacts "${right_dir}")
 
+	if [[ ${#left_files[@]} -eq 0 ]]; then
+		echo "No release artifacts found in ${left_dir}" >&2
+		exit 1
+	fi
+
 	if [[ "${left_files[*]}" != "${right_files[*]}" ]]; then
 		diff -u <(printf '%s\n' "${left_files[@]}") \
 			<(printf '%s\n' "${right_files[@]}")
