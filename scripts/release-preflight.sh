@@ -21,7 +21,7 @@ DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
 
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
-GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.0}"
+GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9}"
 
 require_cmd docker
 
@@ -32,7 +32,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> Building release builder image"
-docker build --platform=linux/amd64 \
+"${BUILDER_ROOT}"/scripts/docker-build-release-builder.sh --platform=linux/amd64 \
 	-f "${BUILDER_ROOT}/docker/release-builder.Dockerfile" \
 	-t "${BUILDER_IMAGE}" "${BUILDER_ROOT}"
 
@@ -95,6 +95,13 @@ docker run --rm --platform=linux/amd64 \
 	-w /source \
 	"${BUILDER_IMAGE}" \
 	bash -lc '/builder/scripts/build-release-artifacts.sh'
+
+echo "==> Verifying release artifact reproducibility"
+GITHUB_SHA="${SOURCE_GIT_SHA}" \
+	SOURCE_ROOT="${SOURCE_ROOT}" \
+	DIST_DIR="${DIST_DIR}" \
+	BUILDER_IMAGE="${BUILDER_IMAGE}" \
+	"${BUILDER_ROOT}/scripts/verify-release-reproducibility.sh"
 
 echo "==> Running stable and unstable package integration tests"
 WORK_ROOT="${WORK_ROOT}" DIST_DIR="${DIST_DIR}" \

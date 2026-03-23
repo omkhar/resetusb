@@ -1,8 +1,19 @@
-FROM debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
+ARG DEBIAN_BASE_IMAGE
+FROM ${DEBIAN_BASE_IMAGE}
+
+ARG DEBIAN_SNAPSHOT_URL
+ARG DEBIAN_SNAPSHOT_TIMESTAMP
+ARG DEBIAN_SUITE
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN set -eux; \
+    echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries; \
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90snapshot; \
+    rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; \
+    printf 'deb [check-valid-until=no] %s/%s/ %s main\n' \
+      "${DEBIAN_SNAPSHOT_URL}" "${DEBIAN_SNAPSHOT_TIMESTAMP}" "${DEBIAN_SUITE}" \
+      > /etc/apt/sources.list.d/snapshot.list; \
     dpkg --add-architecture arm64; \
     dpkg --add-architecture armhf; \
     apt-get update; \

@@ -138,7 +138,7 @@ jobs:
           "${install_dir}/cosign" version
       - name: Build release builder image
         run: |
-          docker build --platform=linux/amd64 \
+          builder/scripts/docker-build-release-builder.sh --platform=linux/amd64 \
             -f builder/docker/release-builder.Dockerfile \
             -t "resetusb-release-builder:${GITHUB_SHA}" \
             builder
@@ -197,7 +197,38 @@ jobs:
           import hashlib
           import json
           import os
+          import subprocess
           from pathlib import Path
+
+          def load_builder_lock(path: Path) -> dict[str, str]:
+              values = {}
+              for raw_line in path.read_text(encoding="utf-8").splitlines():
+                  line = raw_line.strip()
+                  if not line or line.startswith("#"):
+                      continue
+                  key, sep, value = line.partition("=")
+                  if not sep or not key or not value:
+                      raise SystemExit(f"invalid builder lock entry: {raw_line}")
+                  values[key] = value
+              return values
+
+          builder_lock = load_builder_lock(Path("builder/docker/release-builder.lock"))
+          required_keys = {
+              "DEBIAN_BASE_IMAGE",
+              "DEBIAN_SNAPSHOT_URL",
+              "DEBIAN_SNAPSHOT_TIMESTAMP",
+              "DEBIAN_SUITE",
+          }
+          missing_keys = sorted(required_keys.difference(builder_lock))
+          if missing_keys:
+              raise SystemExit(f"builder lock is missing: {', '.join(missing_keys)}")
+
+          source_date_epoch = subprocess.check_output(
+              ["git", "-C", "source", "log", "-1", "--format=%ct", "HEAD"],
+              text=True,
+          ).strip()
+          if not source_date_epoch.isdigit():
+              raise SystemExit(f"unexpected SOURCE_DATE_EPOCH: {source_date_epoch}")
 
           dist = Path("source/dist")
           primary_artifacts = {}
@@ -218,11 +249,18 @@ jobs:
               raise SystemExit("no primary artifacts were built")
 
           manifest = {
-              "format_version": 1,
+              "format_version": 2,
               "release_tag": os.environ["RELEASE_TAG"],
               "source_digest": os.environ["SOURCE_DIGEST"],
               "builder_digest": os.environ["BUILDER_SHA"],
               "builder_workflow": f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/.github/workflows/release-builder.yml@refs/heads/main',
+              "reproducible_inputs": {
+                  "source_date_epoch": int(source_date_epoch),
+                  "builder_base_image": builder_lock["DEBIAN_BASE_IMAGE"],
+                  "debian_snapshot_url": builder_lock["DEBIAN_SNAPSHOT_URL"],
+                  "debian_snapshot_timestamp": builder_lock["DEBIAN_SNAPSHOT_TIMESTAMP"],
+                  "debian_suite": builder_lock["DEBIAN_SUITE"],
+              },
               "primary_artifacts": primary_artifacts,
           }
 
@@ -232,6 +270,19 @@ jobs:
               encoding="utf-8",
           )
           PY
+      - name: Validate release manifest
+        env:
+          BUILDER_SHA: ${{ inputs.builder_sha }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_DIGEST: ${{ inputs.source_digest }}
+        run: |
+          python3 builder/scripts/validate-release-manifest.py \
+            --manifest "source/dist/resetusb-${RELEASE_TAG}-release-manifest.json" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --release-tag "${RELEASE_TAG}" \
+            --source-digest "${SOURCE_DIGEST}" \
+            --builder-digest "${BUILDER_SHA}" \
+            --dist-dir source/dist
       - name: Refresh release checksums
         run: |
           set -euo pipefail

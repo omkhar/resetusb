@@ -183,6 +183,12 @@ jobs:
       actions: read # Download staged workflow artifacts before publication.
       contents: write # Create and update the GitHub release with generated artifacts.
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.release-context.outputs.builder_sha }}
+          fetch-depth: 0
+          path: builder
+          persist-credentials: false
       - name: Download staged release artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -228,45 +234,14 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "${manifest_path}"
 
-          python3 - <<'PY'
-          import hashlib
-          import json
-          import os
-          from pathlib import Path
-
-          manifest_path = Path(f'dist/resetusb-{os.environ["RELEASE_TAG"]}-release-manifest.json')
-          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-          artifacts = json.loads(os.environ["PRIMARY_ARTIFACTS_JSON"])
-
-          if manifest.get("release_tag") != os.environ["RELEASE_TAG"]:
-              raise SystemExit("release manifest tag does not match the requested release tag")
-          if manifest.get("source_digest") != os.environ["SOURCE_DIGEST"]:
-              raise SystemExit("release manifest source digest does not match the signed tag commit")
-          if manifest.get("builder_digest") != os.environ["BUILDER_SHA"]:
-              raise SystemExit("release manifest builder digest does not match the trusted builder workflow")
-          if manifest.get("builder_workflow") != f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/.github/workflows/release-builder.yml@refs/heads/main':
-              raise SystemExit("release manifest builder workflow does not match the trusted builder identity")
-
-          manifest_artifacts = manifest.get("primary_artifacts")
-          if not isinstance(manifest_artifacts, dict):
-              raise SystemExit("release manifest primary_artifacts must be a JSON object")
-          if sorted(manifest_artifacts) != sorted(artifacts):
-              raise SystemExit("release manifest artifacts do not match the staged primary artifacts")
-
-          for artifact in artifacts:
-              artifact_path = Path("dist") / artifact
-              if not artifact_path.is_file():
-                  raise SystemExit(f"missing staged artifact: {artifact_path}")
-
-              artifact_metadata = manifest_artifacts[artifact]
-              if not isinstance(artifact_metadata, dict):
-                  raise SystemExit(f"release manifest entry for {artifact} must be a JSON object")
-
-              expected_sha = artifact_metadata.get("sha256")
-              actual_sha = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-              if expected_sha != actual_sha:
-                  raise SystemExit(f"release manifest digest mismatch for {artifact}")
-          PY
+          python3 builder/scripts/validate-release-manifest.py \
+            --manifest "${manifest_path}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --release-tag "${RELEASE_TAG}" \
+            --source-digest "${SOURCE_DIGEST}" \
+            --builder-digest "${BUILDER_SHA}" \
+            --primary-artifacts-json "${PRIMARY_ARTIFACTS_JSON}" \
+            --dist-dir dist
       - name: Verify staged artifacts against the builder workflow
         env:
           GH_TOKEN: ${{ github.token }}
