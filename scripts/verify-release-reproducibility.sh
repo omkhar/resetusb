@@ -115,7 +115,7 @@ cleanup() {
 		return
 	fi
 
-	docker run --rm \
+	docker run --rm --platform=linux/amd64 \
 		-v "${repro_check_dir}":/repro \
 		"${BUILDER_IMAGE}" \
 		bash -lc 'rm -rf /repro/* /repro/.[!.]* /repro/..?*' >/dev/null 2>&1 || true
