@@ -9,6 +9,25 @@ require_cmd() {
 	}
 }
 
+resolve_source_date_epoch() {
+	if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
+		if [[ ! "${SOURCE_DATE_EPOCH}" =~ ^[0-9]+$ ]]; then
+			echo "SOURCE_DATE_EPOCH must be an integer" >&2
+			exit 1
+		fi
+		printf '%s\n' "${SOURCE_DATE_EPOCH}"
+		return
+	fi
+
+	if git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+		git -C "${SOURCE_ROOT}" log -1 --format=%ct HEAD
+		return
+	fi
+
+	echo "SOURCE_DATE_EPOCH is required when git metadata is unavailable" >&2
+	exit 1
+}
+
 list_artifacts() {
 	local dir="$1"
 
@@ -82,8 +101,10 @@ if [[ ! -d "${DIST_DIR}" ]]; then
 	exit 1
 fi
 
-mkdir -p "${SOURCE_ROOT}/build"
-repro_check_dir="$(mktemp -d "${SOURCE_ROOT}/build/repro-check.XXXXXX")"
+source_date_epoch="$(resolve_source_date_epoch)"
+repro_check_dir="$(mktemp -d "${TMPDIR:-/tmp}/resetusb-repro-check.XXXXXX")"
+repro_dist_dir="${repro_check_dir}/dist"
+mkdir -p "${repro_dist_dir}"
 cleanup() {
 	rm -rf "${repro_check_dir}"
 }
@@ -96,18 +117,20 @@ source_git_sha="$(
 		printf "%s" "${GITHUB_SHA:-}"
 	fi
 )"
-repro_check_rel="${repro_check_dir#"${SOURCE_ROOT}"/}"
 
 docker run --rm --platform=linux/amd64 \
 	-e GITHUB_SHA="${source_git_sha}" \
 	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
+	-e SOURCE_DATE_EPOCH="${source_date_epoch}" \
 	-e SOURCE_ROOT=/source \
-	-e DIST_DIR="/source/${repro_check_rel}" \
+	-e DIST_DIR=/repro/dist \
+	-e WORK_DIR=/tmp/resetusb-build \
 	-v "${BUILDER_ROOT}":/builder:ro \
+	-v "${repro_check_dir}":/repro \
 	-v "${SOURCE_ROOT}":/source \
 	-w /source \
 	"${BUILDER_IMAGE}" \
 	bash -lc '/builder/scripts/build-release-artifacts.sh'
 
-compare_artifacts "${DIST_DIR}" "${repro_check_dir}"
+compare_artifacts "${DIST_DIR}" "${repro_dist_dir}"

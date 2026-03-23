@@ -69,6 +69,7 @@ make format
 - The trusted builder inputs live in `docker/release-builder.lock`. If you need to refresh the release toolchain, update that file in the same PR as the builder or packaging change and explain the reason in the PR description.
 - The Debian snapshot URL is intentionally plain HTTP during bootstrap because the pinned base image does not carry CA roots before the first package install. Integrity still comes from the pinned base image digest and Debian archive signing.
 - Release packaging derives `SOURCE_DATE_EPOCH` from the source commit timestamp and uses the snapshot-pinned builder image so rebuilding the same tag reproduces the primary tarballs and distro packages. Release-time SBOMs and signatures are expected to be regenerated.
+- Ad hoc release-artifact builds now require either git metadata for the source tree or an explicit `SOURCE_DATE_EPOCH`; the trusted workflows export the commit timestamp into the builder automatically.
 - The release manifest contract is versioned in `release-manifest.schema.json`. If you add or rename manifest fields, bump the manifest format version and update the schema, validator, and docs in the same change.
 - Release packaging is validated against stable and unstable distro channels before publication:
   - Debian stable and sid on `amd64`, `arm64`, and `armv7`

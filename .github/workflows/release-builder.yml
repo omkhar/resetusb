@@ -148,13 +148,17 @@ jobs:
         run: |
           set -euo pipefail
           source_git_sha="$(git -C source rev-parse HEAD)"
+          source_date_epoch="$(git -C source log -1 --format=%ct HEAD)"
+          [[ "${source_date_epoch}" =~ ^[0-9]+$ ]]
 
           docker run --rm --platform=linux/amd64 \
             -e GITHUB_SHA="${source_git_sha}" \
             -e GITHUB_REF_NAME="${RELEASE_TAG}" \
             -e GITHUB_REF_TYPE=tag \
+            -e SOURCE_DATE_EPOCH="${source_date_epoch}" \
             -e SOURCE_ROOT=/source \
             -e DIST_DIR=/source/dist \
+            -e WORK_DIR=/tmp/resetusb-build \
             -v "$PWD/builder":/builder:ro \
             -v "$PWD/source":/source \
             -w /source \

@@ -84,12 +84,25 @@ SOURCE_GIT_SHA="$(
 		printf "%s" "${GITHUB_SHA:-}"
 	fi
 )"
+SOURCE_DATE_EPOCH="$(
+	if git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+		git -C "${SOURCE_ROOT}" log -1 --format=%ct HEAD
+	else
+		printf "%s" "${SOURCE_DATE_EPOCH:-}"
+	fi
+)"
+if [[ ! "${SOURCE_DATE_EPOCH}" =~ ^[0-9]+$ ]]; then
+	echo "Unable to resolve SOURCE_DATE_EPOCH from the source commit" >&2
+	exit 1
+fi
 docker run --rm --platform=linux/amd64 \
 	-e GITHUB_SHA="${SOURCE_GIT_SHA}" \
 	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
+	-e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}" \
 	-e SOURCE_ROOT=/source \
 	-e DIST_DIR=/source/dist \
+	-e WORK_DIR=/tmp/resetusb-build \
 	-v "${BUILDER_ROOT}":/builder:ro \
 	-v "${SOURCE_ROOT}":/source \
 	-w /source \
@@ -98,6 +111,7 @@ docker run --rm --platform=linux/amd64 \
 
 echo "==> Verifying release artifact reproducibility"
 GITHUB_SHA="${SOURCE_GIT_SHA}" \
+	SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}" \
 	SOURCE_ROOT="${SOURCE_ROOT}" \
 	DIST_DIR="${DIST_DIR}" \
 	BUILDER_IMAGE="${BUILDER_IMAGE}" \

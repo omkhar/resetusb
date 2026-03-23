@@ -29,7 +29,8 @@ resolve_source_date_epoch() {
 		return
 	fi
 
-	printf '%s\n' "0"
+	echo "SOURCE_DATE_EPOCH is required when git metadata is unavailable" >&2
+	exit 1
 }
 
 resolve_short_sha() {

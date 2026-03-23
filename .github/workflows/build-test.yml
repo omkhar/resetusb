@@ -225,12 +225,17 @@ jobs:
         run: ./scripts/docker-build-release-builder.sh --platform=linux/amd64 -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
       - name: Build release artifacts
         run: |
+          source_date_epoch="$(git log -1 --format=%ct HEAD)"
+          [[ "${source_date_epoch}" =~ ^[0-9]+$ ]]
+
           docker run --rm --platform=linux/amd64 \
             -e GITHUB_SHA="${GITHUB_SHA}" \
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
             -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
+            -e SOURCE_DATE_EPOCH="${source_date_epoch}" \
             -e SOURCE_ROOT=/work \
             -e DIST_DIR=/work/dist \
+            -e WORK_DIR=/tmp/resetusb-build \
             -v "$PWD":/work \
             -w /work \
             "resetusb-release-builder:${GITHUB_SHA}" \

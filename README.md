@@ -107,6 +107,7 @@ Notes:
 - Publication only happens after `release-preflight` succeeds, including a repeat-build digest comparison for the release artifacts.
 - The trusted builder is pinned by `docker/release-builder.lock`, which fixes both the Debian base image digest and the Debian snapshot used for build dependencies.
 - CI build/test jobs use the same snapshot-pinned Debian inputs as the release path, so the compiler and analysis toolchain does not drift independently of the release builder.
+- Release packaging requires either a real git checkout or an explicit `SOURCE_DATE_EPOCH`; the trusted workflows export the source commit timestamp into the builder automatically.
 - Tarballs include the binary and the `resetusb(8)` manual page. Distro packages install both.
 - Each release includes tarballs for:
   - `linux-amd64`
