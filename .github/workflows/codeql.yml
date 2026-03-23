@@ -13,6 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 permissions: {}
 
 env:
@@ -67,7 +71,7 @@ jobs:
           expected_snapshot_timestamp="${DEBIAN_SNAPSHOT_TIMESTAMP}"
           expected_suite="${DEBIAN_SUITE}"
           # shellcheck disable=SC1091
-          source ./docker/release-builder.lock
+          . ./docker/release-builder.lock
 
           [[ "${DEBIAN_BASE_IMAGE}" == "${expected_base_image}" ]]
           [[ "${DEBIAN_SNAPSHOT_URL}" == "${expected_snapshot_url}" ]]
