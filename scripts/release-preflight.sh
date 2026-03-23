@@ -21,7 +21,7 @@ DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
 
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
-GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.0}"
+GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9}"
 
 require_cmd docker
 
@@ -32,7 +32,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> Building release builder image"
-docker build --platform=linux/amd64 \
+"${BUILDER_ROOT}"/scripts/docker-build-release-builder.sh --platform=linux/amd64 \
 	-f "${BUILDER_ROOT}/docker/release-builder.Dockerfile" \
 	-t "${BUILDER_IMAGE}" "${BUILDER_ROOT}"
 
@@ -84,17 +84,38 @@ SOURCE_GIT_SHA="$(
 		printf "%s" "${GITHUB_SHA:-}"
 	fi
 )"
+SOURCE_DATE_EPOCH="$(
+	if git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+		git -C "${SOURCE_ROOT}" log -1 --format=%ct HEAD
+	else
+		printf "%s" "${SOURCE_DATE_EPOCH:-}"
+	fi
+)"
+if [[ ! "${SOURCE_DATE_EPOCH}" =~ ^[0-9]+$ ]]; then
+	echo "Unable to resolve SOURCE_DATE_EPOCH from the source commit" >&2
+	exit 1
+fi
 docker run --rm --platform=linux/amd64 \
 	-e GITHUB_SHA="${SOURCE_GIT_SHA}" \
 	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
+	-e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}" \
 	-e SOURCE_ROOT=/source \
 	-e DIST_DIR=/source/dist \
+	-e WORK_DIR=/tmp/resetusb-build \
 	-v "${BUILDER_ROOT}":/builder:ro \
 	-v "${SOURCE_ROOT}":/source \
 	-w /source \
 	"${BUILDER_IMAGE}" \
 	bash -lc '/builder/scripts/build-release-artifacts.sh'
+
+echo "==> Verifying release artifact reproducibility"
+GITHUB_SHA="${SOURCE_GIT_SHA}" \
+	SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}" \
+	SOURCE_ROOT="${SOURCE_ROOT}" \
+	DIST_DIR="${DIST_DIR}" \
+	BUILDER_IMAGE="${BUILDER_IMAGE}" \
+	"${BUILDER_ROOT}/scripts/verify-release-reproducibility.sh"
 
 echo "==> Running stable and unstable package integration tests"
 WORK_ROOT="${WORK_ROOT}" DIST_DIR="${DIST_DIR}" \

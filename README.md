@@ -104,7 +104,10 @@ Notes:
 
 - Public releases use semantic versioning and signed annotated tags in the form `vMAJOR.MINOR.PATCH`.
 - Release tags are immutable. If release contents need to change, a new patch version is cut.
-- Publication only happens after `release-preflight` succeeds.
+- Publication only happens after `release-preflight` succeeds, including a repeat-build digest comparison for the release artifacts.
+- The trusted builder is pinned by `docker/release-builder.lock`, which fixes both the Debian base image digest and the Debian snapshot used for build dependencies.
+- CI build/test jobs use the same snapshot-pinned Debian inputs as the release path, so the compiler and analysis toolchain does not drift independently of the release builder.
+- Release packaging requires either a real git checkout or an explicit `SOURCE_DATE_EPOCH`; the trusted workflows export the source commit timestamp into the builder automatically.
 - Tarballs include the binary and the `resetusb(8)` manual page. Distro packages install both.
 - Each release includes tarballs for:
   - `linux-amd64`
@@ -119,7 +122,7 @@ Notes:
   - an SPDX JSON SBOM (`.spdx.json`)
   - a Sigstore keyless bundle for the artifact (`.sigstore.json`)
   - a Sigstore keyless bundle for the checksum (`.sha256.sigstore.json`)
-- Each release also includes a builder-signed release manifest (`resetusb-vMAJOR.MINOR.PATCH-release-manifest.json`) with the release tag, the commit digest resolved from the signed tag, the trusted builder digest, and SHA256 hashes for the primary artifacts.
+- Each release also includes a builder-signed release manifest (`resetusb-vMAJOR.MINOR.PATCH-release-manifest.json`) with the release tag, the commit digest resolved from the signed tag, the trusted builder digest, the reproducible builder inputs, and SHA256 hashes for the primary artifacts. The manifest contract is versioned and documented in `release-manifest.schema.json`.
 - GitHub Actions also emits per-asset provenance and SBOM attestations before publication, and publish re-verifies them against the trusted builder workflow revision.
 - Maintainer release steps are documented in `CONTRIBUTING.md`.
 
@@ -214,7 +217,7 @@ gh attestation verify \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
-Public release provenance is rooted in the trusted builder workflow on `main`. The builder also signs a release manifest that records the artifact digests, the builder revision, and the commit digest resolved from the signed release tag.
+Public release provenance is rooted in the trusted builder workflow on `main`. The builder also signs a release manifest that records the artifact digests, the builder revision, the snapshot-pinned builder inputs, and the commit digest resolved from the signed release tag. Primary artifact timestamps are normalized from the source commit time so rebuilding the same tag produces byte-stable tarballs and distro packages. Fresh SBOMs, signatures, and attestations are generated at release time.
 
 ## Community
 

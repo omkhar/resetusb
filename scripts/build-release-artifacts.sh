@@ -9,6 +9,29 @@ BUILDER_ROOT="$(
 	cd -- "${SCRIPT_DIR}/.." && pwd
 )"
 SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
+export LC_ALL=C
+export TZ=UTC
+umask 022
+
+resolve_source_date_epoch() {
+	if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
+		if [[ ! "${SOURCE_DATE_EPOCH}" =~ ^[0-9]+$ ]]; then
+			echo "SOURCE_DATE_EPOCH must be an integer" >&2
+			exit 1
+		fi
+		printf '%s\n' "${SOURCE_DATE_EPOCH}"
+		return
+	fi
+
+	if command -v git >/dev/null 2>&1 &&
+		git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+		git -C "${SOURCE_ROOT}" log -1 --format=%ct HEAD
+		return
+	fi
+
+	echo "SOURCE_DATE_EPOCH is required when git metadata is unavailable" >&2
+	exit 1
+}
 
 resolve_short_sha() {
 	if [[ -n "${GITHUB_SHA:-}" ]]; then
@@ -24,6 +47,17 @@ resolve_short_sha() {
 
 	printf '%s\n' "unknown"
 }
+
+normalize_tree_timestamps() {
+	local root="$1"
+
+	while IFS= read -r -d '' path; do
+		touch --no-dereference --date="@${SOURCE_DATE_EPOCH}" "${path}"
+	done < <(find "${root}" -print0 | sort -z)
+}
+
+SOURCE_DATE_EPOCH="$(resolve_source_date_epoch)"
+export SOURCE_DATE_EPOCH
 
 SHORT_SHA="$(resolve_short_sha)"
 REF_TYPE="${GITHUB_REF_TYPE:-}"
@@ -171,7 +205,14 @@ create_tarball() {
 	install -m 0644 "${SOURCE_ROOT}/README.md" "${stage_path}/README.md"
 	install -m 0644 "${SOURCE_ROOT}/LICENSE" "${stage_path}/LICENSE"
 
-	tar -C "${STAGE_DIR}" -czf "${archive_path}" "${stage_name}"
+	normalize_tree_timestamps "${stage_path}"
+	(
+		cd "${STAGE_DIR}"
+		tar --sort=name --format=gnu \
+			--mtime="@${SOURCE_DATE_EPOCH}" \
+			--owner=0 --group=0 --numeric-owner \
+			-cf - "${stage_name}" | gzip -n > "${archive_path}"
+	)
 }
 
 create_deb_package() {
@@ -211,6 +252,7 @@ Description: Reset enumerated USB devices from Linux
  controlled maintenance windows.
 EOF
 
+	normalize_tree_timestamps "${pkg_root}"
 	dpkg-deb --build --root-owner-group "${pkg_root}" "${artifact}" >/dev/null
 	rm -rf "${pkg_root}"
 }
@@ -273,8 +315,13 @@ install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man8/resetusb.8
 %attr(0755,root,root) %{_sbindir}/resetusb
 EOF
 
+	normalize_tree_timestamps "${rpm_root}"
 	rpmbuild --quiet \
 		--define "_topdir ${rpm_root}" \
+		--define "_buildhost reproducible" \
+		--define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
+		--define "clamp_mtime_to_source_date_epoch 1" \
+		--define "use_source_date_epoch_as_buildtime 1" \
 		--target "${rpm_arch}" \
 		-bb "${spec_path}"
 
@@ -301,6 +348,7 @@ write_checksums() {
 
 main() {
 	require_cmd dpkg-deb
+	require_cmd gzip
 	require_cmd make
 	require_cmd rpmbuild
 	require_cmd runuser

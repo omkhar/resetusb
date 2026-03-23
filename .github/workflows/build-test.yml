@@ -11,8 +11,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: read
+
+env:
+  DEBIAN_BASE_IMAGE: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
+  DEBIAN_SNAPSHOT_URL: http://snapshot.debian.org/archive/debian
+  DEBIAN_SNAPSHOT_TIMESTAMP: 20260317T082636Z
+  DEBIAN_SUITE: trixie
 
 jobs:
   detect-package-changes:
@@ -47,7 +57,7 @@ jobs:
           package_smoke=false
           while IFS= read -r path; do
             case "${path}" in
-              LICENSE|Makefile|README.md|docker/*|resetusb.8|scripts/build-release-artifacts.sh|scripts/release-preflight.sh|scripts/test-package-integration.sh|.github/workflows/*)
+              LICENSE|Makefile|README.md|docker/*|release-manifest.schema.json|resetusb.8|scripts/build-release-artifacts.sh|scripts/docker-build-release-builder.sh|scripts/install-ci-deps.sh|scripts/release-preflight.sh|scripts/test-package-integration.sh|scripts/validate-release-manifest.py|scripts/verify-release-reproducibility.sh|.github/workflows/*)
                 package_smoke=true
                 break
                 ;;
@@ -59,14 +69,40 @@ jobs:
   static-analysis:
     name: static-analysis
     runs-on: ubuntu-latest
+    container:
+      image: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
     steps:
+      - name: Bootstrap pinned CI tooling
+        run: |
+          set -euo pipefail
+          echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90snapshot
+          rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
+          printf 'deb [check-valid-until=no] %s/%s/ %s main\n' \
+            "${DEBIAN_SNAPSHOT_URL}" "${DEBIAN_SNAPSHOT_TIMESTAMP}" "${DEBIAN_SUITE}" \
+            > /etc/apt/sources.list.d/snapshot.list
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Verify CI snapshot lock matches the release builder lock
+        run: |
+          set -euo pipefail
+          expected_base_image="${DEBIAN_BASE_IMAGE}"
+          expected_snapshot_url="${DEBIAN_SNAPSHOT_URL}"
+          expected_snapshot_timestamp="${DEBIAN_SNAPSHOT_TIMESTAMP}"
+          expected_suite="${DEBIAN_SUITE}"
+          # shellcheck disable=SC1091
+          . ./docker/release-builder.lock
+
+          [[ "${DEBIAN_BASE_IMAGE}" == "${expected_base_image}" ]]
+          [[ "${DEBIAN_SNAPSHOT_URL}" == "${expected_snapshot_url}" ]]
+          [[ "${DEBIAN_SNAPSHOT_TIMESTAMP}" == "${expected_snapshot_timestamp}" ]]
+          [[ "${DEBIAN_SUITE}" == "${expected_suite}" ]]
       - name: Install static analysis tooling
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
+          ./scripts/install-ci-deps.sh static-analysis
       - name: Run lint, format, and clang static analysis
         run: |
           make lint
@@ -76,18 +112,44 @@ jobs:
   unit-tests:
     name: unit-tests (${{ matrix.cc }})
     runs-on: ubuntu-latest
+    container:
+      image: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
     strategy:
       fail-fast: false
       matrix:
         cc: [gcc, clang]
     steps:
+      - name: Bootstrap pinned CI tooling
+        run: |
+          set -euo pipefail
+          echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90snapshot
+          rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
+          printf 'deb [check-valid-until=no] %s/%s/ %s main\n' \
+            "${DEBIAN_SNAPSHOT_URL}" "${DEBIAN_SNAPSHOT_TIMESTAMP}" "${DEBIAN_SUITE}" \
+            > /etc/apt/sources.list.d/snapshot.list
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Verify CI snapshot lock matches the release builder lock
+        run: |
+          set -euo pipefail
+          expected_base_image="${DEBIAN_BASE_IMAGE}"
+          expected_snapshot_url="${DEBIAN_SNAPSHOT_URL}"
+          expected_snapshot_timestamp="${DEBIAN_SNAPSHOT_TIMESTAMP}"
+          expected_suite="${DEBIAN_SUITE}"
+          # shellcheck disable=SC1091
+          . ./docker/release-builder.lock
+
+          [[ "${DEBIAN_BASE_IMAGE}" == "${expected_base_image}" ]]
+          [[ "${DEBIAN_SNAPSHOT_URL}" == "${expected_snapshot_url}" ]]
+          [[ "${DEBIAN_SNAPSHOT_TIMESTAMP}" == "${expected_snapshot_timestamp}" ]]
+          [[ "${DEBIAN_SUITE}" == "${expected_suite}" ]]
       - name: Install compiler and build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential clang libusb-1.0-0-dev
+          ./scripts/install-ci-deps.sh unit-tests
       - name: Build and run unit tests
         env:
           MATRIX_CC: ${{ matrix.cc }}
@@ -108,14 +170,40 @@ jobs:
   sanitize:
     name: sanitize
     runs-on: ubuntu-latest
+    container:
+      image: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
     steps:
+      - name: Bootstrap pinned CI tooling
+        run: |
+          set -euo pipefail
+          echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90snapshot
+          rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
+          printf 'deb [check-valid-until=no] %s/%s/ %s main\n' \
+            "${DEBIAN_SNAPSHOT_URL}" "${DEBIAN_SNAPSHOT_TIMESTAMP}" "${DEBIAN_SUITE}" \
+            > /etc/apt/sources.list.d/snapshot.list
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Verify CI snapshot lock matches the release builder lock
+        run: |
+          set -euo pipefail
+          expected_base_image="${DEBIAN_BASE_IMAGE}"
+          expected_snapshot_url="${DEBIAN_SNAPSHOT_URL}"
+          expected_snapshot_timestamp="${DEBIAN_SNAPSHOT_TIMESTAMP}"
+          expected_suite="${DEBIAN_SUITE}"
+          # shellcheck disable=SC1091
+          . ./docker/release-builder.lock
+
+          [[ "${DEBIAN_BASE_IMAGE}" == "${expected_base_image}" ]]
+          [[ "${DEBIAN_SNAPSHOT_URL}" == "${expected_snapshot_url}" ]]
+          [[ "${DEBIAN_SNAPSHOT_TIMESTAMP}" == "${expected_snapshot_timestamp}" ]]
+          [[ "${DEBIAN_SUITE}" == "${expected_suite}" ]]
       - name: Install sanitizer dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libusb-1.0-0-dev
+          ./scripts/install-ci-deps.sh sanitize
       - name: Run address and undefined behavior sanitizers
         run: |
           make clean
@@ -134,17 +222,35 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
       - name: Build release builder image
-        run: docker build --platform=linux/amd64 -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
+        run: ./scripts/docker-build-release-builder.sh --platform=linux/amd64 -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
       - name: Build release artifacts
         run: |
+          source_date_epoch="$(git log -1 --format=%ct HEAD)"
+          [[ "${source_date_epoch}" =~ ^[0-9]+$ ]]
+
           docker run --rm --platform=linux/amd64 \
             -e GITHUB_SHA="${GITHUB_SHA}" \
             -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
             -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
+            -e SOURCE_DATE_EPOCH="${source_date_epoch}" \
+            -e SOURCE_ROOT=/work \
+            -e DIST_DIR=/work/dist \
+            -e WORK_DIR=/tmp/resetusb-build \
             -v "$PWD":/work \
             -w /work \
             "resetusb-release-builder:${GITHUB_SHA}" \
             bash -lc './scripts/build-release-artifacts.sh'
+      - name: Verify release artifacts are reproducible
+        env:
+          BUILDER_IMAGE: resetusb-release-builder:${{ github.sha }}
+        run: |
+          GITHUB_SHA="${GITHUB_SHA}" \
+          GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+          GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
+          SOURCE_ROOT="$PWD" \
+          DIST_DIR="$PWD/dist" \
+          BUILDER_IMAGE="${BUILDER_IMAGE}" \
+          ./scripts/verify-release-reproducibility.sh
       - name: Run package smoke tests
         run: |
           ./scripts/test-package-integration.sh
