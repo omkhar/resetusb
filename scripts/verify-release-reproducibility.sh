@@ -111,7 +111,15 @@ repro_check_dir="$(mktemp -d "${TMPDIR:-/tmp}/resetusb-repro-check.XXXXXX")"
 repro_dist_dir="${repro_check_dir}/dist"
 mkdir -p "${repro_dist_dir}"
 cleanup() {
-	rm -rf "${repro_check_dir}"
+	if [[ ! -d "${repro_check_dir}" ]]; then
+		return
+	fi
+
+	docker run --rm \
+		-v "${repro_check_dir}":/repro \
+		"${BUILDER_IMAGE}" \
+		bash -lc 'rm -rf /repro/* /repro/.[!.]* /repro/..?*' >/dev/null 2>&1 || true
+	rm -rf "${repro_check_dir}" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
