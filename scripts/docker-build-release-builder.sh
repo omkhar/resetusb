@@ -32,8 +32,17 @@ for name in "${required_vars[@]}"; do
 	fi
 done
 
+base_image_from_dockerfile="$(
+	awk 'toupper($1) == "FROM" {print $2; exit}' \
+		"${BUILDER_ROOT}/docker/release-builder.Dockerfile"
+)"
+
+if [[ "${base_image_from_dockerfile}" != "${DEBIAN_BASE_IMAGE}" ]]; then
+	echo "release builder lock base image does not match docker/release-builder.Dockerfile" >&2
+	exit 1
+fi
+
 exec docker build \
-	--build-arg "DEBIAN_BASE_IMAGE=${DEBIAN_BASE_IMAGE}" \
 	--build-arg "DEBIAN_SNAPSHOT_URL=${DEBIAN_SNAPSHOT_URL}" \
 	--build-arg "DEBIAN_SNAPSHOT_TIMESTAMP=${DEBIAN_SNAPSHOT_TIMESTAMP}" \
 	--build-arg "DEBIAN_SUITE=${DEBIAN_SUITE}" \
