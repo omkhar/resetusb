@@ -26,7 +26,7 @@ jobs:
     name: analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.DEBIAN_BASE_IMAGE }}
+      image: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
     permissions:
       actions: read # Resolve workflow metadata when analyzing GitHub Actions definitions.
       contents: read # Check out repository contents for CodeQL analysis.

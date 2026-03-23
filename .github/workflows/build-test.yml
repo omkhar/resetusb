@@ -66,7 +66,7 @@ jobs:
     name: static-analysis
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.DEBIAN_BASE_IMAGE }}
+      image: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
     steps:
       - name: Bootstrap pinned CI tooling
         run: |
@@ -109,7 +109,7 @@ jobs:
     name: unit-tests (${{ matrix.cc }})
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.DEBIAN_BASE_IMAGE }}
+      image: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
     strategy:
       fail-fast: false
       matrix:
@@ -167,7 +167,7 @@ jobs:
     name: sanitize
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.DEBIAN_BASE_IMAGE }}
+      image: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
     steps:
       - name: Bootstrap pinned CI tooling
         run: |
