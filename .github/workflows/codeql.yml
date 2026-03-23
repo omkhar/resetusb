@@ -17,7 +17,7 @@ permissions: {}
 
 env:
   DEBIAN_BASE_IMAGE: debian:trixie@sha256:55a15a112b42be10bfc8092fcc40b6748dc236f7ef46a358d9392b339e9d60e8
-  DEBIAN_SNAPSHOT_URL: https://snapshot.debian.org/archive/debian
+  DEBIAN_SNAPSHOT_URL: http://snapshot.debian.org/archive/debian
   DEBIAN_SNAPSHOT_TIMESTAMP: 20260317T082636Z
   DEBIAN_SUITE: trixie
 

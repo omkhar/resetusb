@@ -31,6 +31,7 @@ Please include:
 - The runtime refuses mismatched real/effective UID execution contexts.
 - CI covers static analysis, shell linting, unit tests, sanitizers, package validation, fuzzing, and secret scanning.
 - The release-adjacent CI toolchain is snapshot-pinned so build and analysis jobs do not drift independently from the trusted builder.
+- The Debian snapshot bootstrap path uses Debian archive signing plus the pinned base image digest for integrity. The initial snapshot fetch is plain HTTP because CA roots are not available until the first package install.
 - Releases are published only after `release-preflight` succeeds.
 - Public releases are built in GitHub Actions from signed annotated semver tags. The trusted builder workflow verifies the signed tag before building, uses the snapshot-pinned inputs recorded in `docker/release-builder.lock`, and the published release manifest records the commit digest and reproducible builder inputs that were built.
 - Release artifacts include generic tarballs, distro-specific packages, the `resetusb(8)` manual page, SHA256 checksums, SPDX JSON SBOMs, Sigstore keyless bundles (`.sigstore.json`), and GitHub provenance plus SBOM attestations.
