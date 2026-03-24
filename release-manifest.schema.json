@@ -31,6 +31,7 @@
     },
     "builder_workflow": {
       "type": "string",
+      "description": "Repository ownership is validated separately by scripts/validate-release-manifest.py, so the schema keeps this pattern repository-agnostic.",
       "pattern": "^https://github\\.com/[^/]+/[^/]+/\\.github/workflows/release-builder\\.yml@refs/heads/main$"
     },
     "reproducible_inputs": {

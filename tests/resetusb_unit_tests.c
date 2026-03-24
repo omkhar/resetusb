@@ -13,6 +13,7 @@ typedef struct fake_state {
 	int free_device_list_calls;
 	int exit_calls;
 
+	libusb_device **device_list;
 	libusb_device *devices[3];
 	libusb_device_handle *handles[2];
 	uint8_t bus_numbers[2];
@@ -79,7 +80,7 @@ static ssize_t fake_libusb_get_device_list(libusb_context *ctx,
 	(void)ctx;
 	g_fake.get_device_list_calls++;
 	if (list != NULL) {
-		*list = g_fake.devices;
+		*list = g_fake.device_list;
 	}
 	return g_fake.device_count;
 }
@@ -159,6 +160,7 @@ static int fake_libusb_get_string_descriptor_ascii(libusb_device_handle *handle,
 					    : g_fake.string_value[idx];
 		size_t want = strlen(value);
 		size_t to_copy = want < (size_t)length ? want : (size_t)length;
+		/* resetusb_run() is responsible for adding the trailing NUL. */
 		memcpy(data, value, to_copy);
 	}
 
@@ -221,6 +223,7 @@ static void reset_fake(void)
 
 	g_fake.init_rc = LIBUSB_SUCCESS;
 	g_fake.device_count = 1;
+	g_fake.device_list = g_fake.devices;
 	g_fake.devices[0] = (libusb_device *)&token_device_0;
 	g_fake.devices[1] = NULL;
 	g_fake.handles[0] = (libusb_device_handle *)&token_handle_0;
@@ -336,6 +339,75 @@ static void test_init_failure(void)
 	       strstr(err,
 		      "Failed to initialize libusb: LIBUSB_ERROR_ACCESS") !=
 		       NULL);
+
+	free(out);
+	free(err);
+}
+
+static void test_device_list_failure(void)
+{
+	reset_fake();
+	g_fake.device_count = LIBUSB_ERROR_IO;
+
+	char *out = NULL;
+	char *err = NULL;
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
+
+	assert(rc == 1);
+	assert(g_fake.init_calls == 1);
+	assert(g_fake.get_device_list_calls == 1);
+	assert(g_fake.free_device_list_calls == 0);
+	assert(g_fake.exit_calls == 1);
+	assert(out != NULL && strcmp(out, "") == 0);
+	assert(err != NULL && strstr(err, "Failed to enumerate USB devices: "
+					  "LIBUSB_ERROR_IO") != NULL);
+
+	free(out);
+	free(err);
+}
+
+static void test_null_device_list_rejected(void)
+{
+	reset_fake();
+	g_fake.device_count = 1;
+	g_fake.device_list = NULL;
+
+	char *out = NULL;
+	char *err = NULL;
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
+
+	assert(rc == 1);
+	assert(g_fake.init_calls == 1);
+	assert(g_fake.get_device_list_calls == 1);
+	assert(g_fake.free_device_list_calls == 0);
+	assert(g_fake.exit_calls == 1);
+	assert(out != NULL && strcmp(out, "") == 0);
+	assert(err != NULL &&
+	       strstr(err,
+		      "Failed to enumerate USB devices: null device list") !=
+		       NULL);
+
+	free(out);
+	free(err);
+}
+
+static void test_empty_device_list_succeeds(void)
+{
+	reset_fake();
+	g_fake.device_count = 0;
+
+	char *out = NULL;
+	char *err = NULL;
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
+
+	assert(rc == 0);
+	assert(g_fake.init_calls == 1);
+	assert(g_fake.get_device_list_calls == 1);
+	assert(g_fake.free_device_list_calls == 1);
+	assert(g_fake.exit_calls == 1);
+	assert(err != NULL && strcmp(err, "") == 0);
+	assert(out != NULL &&
+	       strstr(out, "Summary: reset 0 device(s), 0 failure(s)") != NULL);
 
 	free(out);
 	free(err);
@@ -460,6 +532,45 @@ static void test_product_name_sanitized(void)
 	free(err);
 }
 
+static void test_no_product_string_uses_unknown(void)
+{
+	reset_fake();
+	g_fake.descriptors[0].iProduct = 0;
+
+	char *out = NULL;
+	char *err = NULL;
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
+
+	assert(rc == 0);
+	assert(g_fake.string_calls[0] == 0);
+	assert(err != NULL && strcmp(err, "") == 0);
+	assert(out != NULL &&
+	       strstr(out, "reset bus 1 device 2 (1234:5678) <unknown>") !=
+		       NULL);
+
+	free(out);
+	free(err);
+}
+
+static void test_zero_length_product_string_unavailable(void)
+{
+	reset_fake();
+	g_fake.string_rc[0] = 0;
+
+	char *out = NULL;
+	char *err = NULL;
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
+
+	assert(rc == 0);
+	assert(err != NULL && strcmp(err, "") == 0);
+	assert(out != NULL &&
+	       strstr(out, "reset bus 1 device 2 (1234:5678) <string "
+			   "unavailable>") != NULL);
+
+	free(out);
+	free(err);
+}
+
 static void test_null_device_entry_counted(void)
 {
 	reset_fake();
@@ -508,18 +619,23 @@ static void run_test(const char *name, test_fn fn)
 	fprintf(stdout, "ok - %s\n", name);
 }
 
-int main(void);
-
 int main(void)
 {
 	run_test("requires_root", test_requires_root);
 	run_test("init_failure", test_init_failure);
+	run_test("device_list_failure", test_device_list_failure);
+	run_test("null_device_list_rejected", test_null_device_list_rejected);
+	run_test("empty_device_list_succeeds", test_empty_device_list_succeeds);
 	run_test("successful_reset", test_successful_reset);
 	run_test("mixed_failures_counted", test_mixed_failures_counted);
 	run_test("reset_failure_closes_handle",
 		 test_reset_failure_closes_handle);
 	run_test("incomplete_ops_table_rejected",
 		 test_incomplete_ops_table_rejected);
+	run_test("no_product_string_uses_unknown",
+		 test_no_product_string_uses_unknown);
+	run_test("zero_length_product_string_unavailable",
+		 test_zero_length_product_string_unavailable);
 	run_test("product_name_sanitized", test_product_name_sanitized);
 	run_test("null_device_entry_counted", test_null_device_entry_counted);
 	run_test("mismatched_uids_rejected", test_mismatched_uids_rejected);

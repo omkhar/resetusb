@@ -1,6 +1,7 @@
 #include "resetusb.h"
 
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -26,6 +27,15 @@ static const char *safe_error_name(const resetusb_ops *ops, int code)
 		name = ops->libusb_error_name(code);
 	}
 	return name != NULL ? name : "unknown";
+}
+
+static int error_code_from_ssize(ssize_t value)
+{
+	if (value < (ssize_t)INT_MIN || value > (ssize_t)INT_MAX) {
+		return LIBUSB_ERROR_OTHER;
+	}
+
+	return (int)value;
 }
 
 static void sanitize_product_name(char *name)
@@ -81,7 +91,8 @@ int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
 	ssize_t device_count = ops->libusb_get_device_list(ctx, &devices);
 	if (device_count < 0) {
 		fprintf(err, "Failed to enumerate USB devices: %s\n",
-			safe_error_name(ops, (int)device_count));
+			safe_error_name(ops,
+					error_code_from_ssize(device_count)));
 		ops->libusb_exit(ctx);
 		return 1;
 	}
@@ -143,9 +154,6 @@ int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
 				(int)sizeof(product) - 1);
 			if (len > 0) {
 				size_t product_len = (size_t)len;
-				if (product_len >= sizeof(product)) {
-					product_len = sizeof(product) - 1;
-				}
 				product[product_len] = '\0';
 				sanitize_product_name(product);
 			} else {
@@ -190,8 +198,6 @@ int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
 }
 
 #ifndef RESETUSB_TEST
-int main(void);
-
 static const resetusb_ops default_ops = {
 	.libusb_init = libusb_init,
 	.libusb_get_device_list = libusb_get_device_list,
