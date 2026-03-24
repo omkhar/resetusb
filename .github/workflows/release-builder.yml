@@ -122,13 +122,11 @@ jobs:
           set -euo pipefail
           version="v3.0.5"
           expected_sha256="db15cc99e6e4837daabab023742aaddc3841ce57f193d11b7c3e06c8003642b2"
-          user_agent="Better Uptime Bot Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"
           install_dir="${RUNNER_TEMP}/bin"
 
           mkdir -p "$install_dir"
           curl --fail --show-error --silent --location \
             --retry 6 --retry-all-errors --retry-delay 2 \
-            --user-agent "$user_agent" \
             "https://github.com/sigstore/cosign/releases/download/${version}/cosign-linux-amd64" \
             --output "${install_dir}/cosign"
 

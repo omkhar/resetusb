@@ -165,10 +165,103 @@ validate_regex_value() {
 	fi
 }
 
+canonicalize_existing_dir() {
+	local path="$1"
+
+	if [[ "${path}" != /* || ! -d "${path}" ]]; then
+		echo "Expected an existing absolute directory: ${path}" >&2
+		exit 1
+	fi
+
+	(
+		cd "${path}"
+		pwd -P
+	)
+}
+
+canonicalize_cleanup_dir() {
+	local path="$1"
+	local current
+	local suffix=""
+
+	validate_single_line_value "cleanup path" "${path}"
+	if [[ "${path}" != /* ]]; then
+		echo "Cleanup paths must be absolute: ${path}" >&2
+		exit 1
+	fi
+
+	path="${path%/}"
+	if [[ -z "${path}" ]]; then
+		path="/"
+	fi
+	if [[ "${path}" == "/" ]]; then
+		echo "Refusing to use / as a cleanup path" >&2
+		exit 1
+	fi
+	if [[ "/${path}/" == *"/./"* || "/${path}/" == *"/../"* ||
+	      "${path}" == *"//"* ]]; then
+		echo "Cleanup paths must not contain relative components: ${path}" >&2
+		exit 1
+	fi
+
+	current="${path}"
+	while [[ ! -e "${current}" ]]; do
+		local base
+
+		base="$(basename -- "${current}")"
+		if [[ -z "${base}" || "${base}" == "." || "${base}" == ".." ]]; then
+			echo "Unable to canonicalize cleanup path: ${path}" >&2
+			exit 1
+		fi
+		suffix="/${base}${suffix}"
+		current="$(dirname -- "${current}")"
+	done
+
+	if [[ ! -d "${current}" ]]; then
+		echo "Cleanup path must resolve to a directory: ${path}" >&2
+		exit 1
+	fi
+
+	current="$(
+		cd "${current}"
+		pwd -P
+	)"
+	printf '%s%s\n' "${current%/}" "${suffix}"
+}
+
+validate_cleanup_dir() {
+	local name="$1"
+	local value="$2"
+	local canonical
+	local allowed_root
+
+	canonical="$(canonicalize_cleanup_dir "${value}")"
+	for allowed_root in "${SOURCE_ROOT_CANON}" "${TMP_ROOT_CANON}" \
+		"${SYSTEM_TMP_ROOT_CANON}"; do
+		if [[ "${canonical}" == "${allowed_root}" ]]; then
+			echo "${name} must not point at a cleanup root: ${canonical}" >&2
+			exit 1
+		fi
+
+		if [[ "${canonical}" == "${allowed_root}"/* ]]; then
+			return
+		fi
+	done
+
+	echo "${name} must stay under ${SOURCE_ROOT_CANON}, ${TMP_ROOT_CANON}, or ${SYSTEM_TMP_ROOT_CANON}: ${canonical}" >&2
+	exit 1
+}
+
+SOURCE_ROOT_CANON="$(canonicalize_existing_dir "${SOURCE_ROOT}")"
+TMP_ROOT_CANON="$(canonicalize_existing_dir "${TMPDIR:-/tmp}")"
+SYSTEM_TMP_ROOT_CANON="$(canonicalize_existing_dir /tmp)"
+
 validate_regex_value "PACKAGE_VERSION" "${PACKAGE_VERSION}" \
 	"${PACKAGE_VERSION_REGEX}"
 validate_regex_value "MAINTAINER" "${MAINTAINER}" "${MAINTAINER_REGEX}"
 validate_regex_value "HOMEPAGE" "${HOMEPAGE}" "${HOMEPAGE_REGEX}"
+validate_cleanup_dir "DIST_DIR" "${DIST_DIR}"
+validate_cleanup_dir "WORK_DIR" "${WORK_DIR}"
 
 expect_non_root_error() {
 	local log_file="$1"

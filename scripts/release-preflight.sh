@@ -28,6 +28,7 @@ BUILDER_ROOT="$(
 SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
 WORK_ROOT="${WORK_ROOT:-${SOURCE_ROOT}}"
 DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
+CONTAINER_UID_GID="$(id -u):$(id -g)"
 
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
@@ -71,6 +72,7 @@ docker build --platform=linux/amd64 \
 
 echo "==> Running Linux release preflight"
 docker run --rm --platform=linux/amd64 \
+	--user "${CONTAINER_UID_GID}" \
 	-v "${SOURCE_ROOT}":/source \
 	-w /source \
 	"${PREFLIGHT_IMAGE}" \
@@ -90,54 +92,15 @@ docker run --rm --platform=linux/amd64 \
 		make sanitize CC=gcc
 	'
 
-echo "==> Building release artifacts"
-SOURCE_GIT_SHA="$(
-	if git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-		git -C "${SOURCE_ROOT}" rev-parse HEAD
-	else
-		printf "%s" "${GITHUB_SHA:-}"
-	fi
-)"
-SOURCE_DATE_EPOCH="$(
-	if git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-		git -C "${SOURCE_ROOT}" log -1 --format=%ct HEAD
-	else
-		printf "%s" "${SOURCE_DATE_EPOCH:-}"
-	fi
-)"
-if [[ ! "${SOURCE_DATE_EPOCH}" =~ ^[0-9]+$ ]]; then
-	echo "Unable to resolve SOURCE_DATE_EPOCH from the source commit" >&2
-	exit 1
-fi
-docker run --rm --platform=linux/amd64 \
-	-e GITHUB_SHA="${SOURCE_GIT_SHA}" \
-	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
-	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
-	-e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}" \
-	-e SOURCE_ROOT=/source \
-	-e DIST_DIR=/source/dist \
-	-e WORK_DIR=/tmp/resetusb-build \
-	-v "${BUILDER_ROOT}":/builder:ro \
-	-v "${SOURCE_ROOT}":/source \
-	-w /source \
-	"${BUILDER_IMAGE}" \
-	bash -lc '/builder/scripts/build-release-artifacts.sh'
-
-echo "==> Verifying release artifact reproducibility"
-GITHUB_SHA="${SOURCE_GIT_SHA}" \
-	SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}" \
-	SOURCE_ROOT="${SOURCE_ROOT}" \
+SOURCE_ROOT="${SOURCE_ROOT}" \
+	WORK_ROOT="${WORK_ROOT}" \
 	DIST_DIR="${DIST_DIR}" \
 	BUILDER_IMAGE="${BUILDER_IMAGE}" \
-	"${BUILDER_ROOT}/scripts/verify-release-reproducibility.sh"
-
-echo "==> Running stable and unstable package integration tests"
-WORK_ROOT="${WORK_ROOT}" DIST_DIR="${DIST_DIR}" \
-	"${BUILDER_ROOT}/scripts/test-package-integration.sh"
+	"${BUILDER_ROOT}/scripts/run-package-smoke.sh"
 
 echo "==> Running gitleaks history scan"
 docker run --rm \
-	-v "${SOURCE_ROOT}":/repo \
+	-v "${SOURCE_ROOT}":/repo:ro \
 	-w /repo \
 	"${GITLEAKS_IMAGE}" \
 	git /repo --log-opts="--all" --no-banner --redact --exit-code 1

@@ -57,7 +57,7 @@ jobs:
           package_smoke=false
           while IFS= read -r path; do
             case "${path}" in
-              LICENSE|Makefile|README.md|docker/*|release-manifest.schema.json|resetusb.8|scripts/build-release-artifacts.sh|scripts/docker-build-release-builder.sh|scripts/install-ci-deps.sh|scripts/release-preflight.sh|scripts/test-package-integration.sh|scripts/validate-release-manifest.py|scripts/verify-release-reproducibility.sh|.github/workflows/*)
+              LICENSE|Makefile|README.md|docker/*|release-manifest.schema.json|resetusb.8|scripts/build-release-artifacts.sh|scripts/docker-build-release-builder.sh|scripts/install-ci-deps.sh|scripts/release-preflight.sh|scripts/run-package-smoke.sh|scripts/test-package-integration.sh|scripts/validate-release-manifest.py|scripts/verify-release-reproducibility.sh|.github/workflows/*)
                 package_smoke=true
                 break
                 ;;
@@ -221,36 +221,9 @@ jobs:
           persist-credentials: false
       - name: Set up QEMU
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
-      - name: Build release builder image
-        run: ./scripts/docker-build-release-builder.sh --platform=linux/amd64 -f docker/release-builder.Dockerfile -t "resetusb-release-builder:${GITHUB_SHA}" .
-      - name: Build release artifacts
-        run: |
-          source_date_epoch="$(git log -1 --format=%ct HEAD)"
-          [[ "${source_date_epoch}" =~ ^[0-9]+$ ]]
-
-          docker run --rm --platform=linux/amd64 \
-            -e GITHUB_SHA="${GITHUB_SHA}" \
-            -e GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
-            -e GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
-            -e SOURCE_DATE_EPOCH="${source_date_epoch}" \
-            -e SOURCE_ROOT=/work \
-            -e DIST_DIR=/work/dist \
-            -e WORK_DIR=/tmp/resetusb-build \
-            -v "$PWD":/work \
-            -w /work \
-            "resetusb-release-builder:${GITHUB_SHA}" \
-            bash -lc './scripts/build-release-artifacts.sh'
-      - name: Verify release artifacts are reproducible
+      - name: Run release package smoke checks
         env:
           BUILDER_IMAGE: resetusb-release-builder:${{ github.sha }}
+          BUILD_BUILDER_IMAGE: "1"
         run: |
-          GITHUB_SHA="${GITHUB_SHA}" \
-          GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
-          GITHUB_REF_TYPE="${GITHUB_REF_TYPE}" \
-          SOURCE_ROOT="$PWD" \
-          DIST_DIR="$PWD/dist" \
-          BUILDER_IMAGE="${BUILDER_IMAGE}" \
-          ./scripts/verify-release-reproducibility.sh
-      - name: Run package smoke tests
-        run: |
-          ./scripts/test-package-integration.sh
+          ./scripts/run-package-smoke.sh
