@@ -48,12 +48,20 @@ validate_locked_image_ref() {
 
 load_package_test_image_lock() {
 	local required_vars=(
-		DEBIAN_STABLE_IMAGE
-		DEBIAN_UNSTABLE_IMAGE
-		UBUNTU_STABLE_IMAGE
-		UBUNTU_UNSTABLE_IMAGE
-		FEDORA_STABLE_IMAGE
-		FEDORA_UNSTABLE_IMAGE
+		DEBIAN_STABLE_AMD64_IMAGE
+		DEBIAN_STABLE_ARM64_IMAGE
+		DEBIAN_STABLE_ARMV7_IMAGE
+		DEBIAN_UNSTABLE_AMD64_IMAGE
+		DEBIAN_UNSTABLE_ARM64_IMAGE
+		DEBIAN_UNSTABLE_ARMV7_IMAGE
+		UBUNTU_STABLE_AMD64_IMAGE
+		UBUNTU_STABLE_ARM64_IMAGE
+		UBUNTU_STABLE_ARMV7_IMAGE
+		UBUNTU_UNSTABLE_AMD64_IMAGE
+		UBUNTU_UNSTABLE_ARM64_IMAGE
+		UBUNTU_UNSTABLE_ARMV7_IMAGE
+		FEDORA_STABLE_AMD64_IMAGE
+		FEDORA_UNSTABLE_AMD64_IMAGE
 	)
 	local name
 
@@ -78,28 +86,53 @@ load_package_test_image_lock() {
 resolve_package_test_image() {
 	local distro="$1"
 	local channel="$2"
+	local arch="$3"
 
-	case "${distro}:${channel}" in
-		debian:stable)
-			printf '%s\n' "${DEBIAN_STABLE_IMAGE}"
+	case "${distro}:${channel}:${arch}" in
+		debian:stable:amd64)
+			printf '%s\n' "${DEBIAN_STABLE_AMD64_IMAGE}"
 			;;
-		debian:unstable)
-			printf '%s\n' "${DEBIAN_UNSTABLE_IMAGE}"
+		debian:stable:arm64)
+			printf '%s\n' "${DEBIAN_STABLE_ARM64_IMAGE}"
 			;;
-		ubuntu:stable)
-			printf '%s\n' "${UBUNTU_STABLE_IMAGE}"
+		debian:stable:armv7)
+			printf '%s\n' "${DEBIAN_STABLE_ARMV7_IMAGE}"
 			;;
-		ubuntu:unstable)
-			printf '%s\n' "${UBUNTU_UNSTABLE_IMAGE}"
+		debian:unstable:amd64)
+			printf '%s\n' "${DEBIAN_UNSTABLE_AMD64_IMAGE}"
 			;;
-		fedora:stable)
-			printf '%s\n' "${FEDORA_STABLE_IMAGE}"
+		debian:unstable:arm64)
+			printf '%s\n' "${DEBIAN_UNSTABLE_ARM64_IMAGE}"
 			;;
-		fedora:unstable)
-			printf '%s\n' "${FEDORA_UNSTABLE_IMAGE}"
+		debian:unstable:armv7)
+			printf '%s\n' "${DEBIAN_UNSTABLE_ARMV7_IMAGE}"
+			;;
+		ubuntu:stable:amd64)
+			printf '%s\n' "${UBUNTU_STABLE_AMD64_IMAGE}"
+			;;
+		ubuntu:stable:arm64)
+			printf '%s\n' "${UBUNTU_STABLE_ARM64_IMAGE}"
+			;;
+		ubuntu:stable:armv7)
+			printf '%s\n' "${UBUNTU_STABLE_ARMV7_IMAGE}"
+			;;
+		ubuntu:unstable:amd64)
+			printf '%s\n' "${UBUNTU_UNSTABLE_AMD64_IMAGE}"
+			;;
+		ubuntu:unstable:arm64)
+			printf '%s\n' "${UBUNTU_UNSTABLE_ARM64_IMAGE}"
+			;;
+		ubuntu:unstable:armv7)
+			printf '%s\n' "${UBUNTU_UNSTABLE_ARMV7_IMAGE}"
+			;;
+		fedora:stable:amd64)
+			printf '%s\n' "${FEDORA_STABLE_AMD64_IMAGE}"
+			;;
+		fedora:unstable:amd64)
+			printf '%s\n' "${FEDORA_UNSTABLE_AMD64_IMAGE}"
 			;;
 		*)
-			echo "Unsupported package test target: ${distro}/${channel}" >&2
+			echo "Unsupported package test target: ${distro}/${channel}/${arch}" >&2
 			exit 1
 			;;
 	esac
@@ -367,14 +400,14 @@ main() {
 	for channel in ${PACKAGE_TEST_CHANNELS}; do
 		for arch in ${PACKAGE_TEST_ARCHES}; do
 			run_deb_test debian "${channel}" "${arch}" \
-				"$(resolve_package_test_image debian "${channel}")"
+				"$(resolve_package_test_image debian "${channel}" "${arch}")"
 			run_deb_test ubuntu "${channel}" "${arch}" \
-				"$(resolve_package_test_image ubuntu "${channel}")"
+				"$(resolve_package_test_image ubuntu "${channel}" "${arch}")"
 		done
 
 		if [[ " ${PACKAGE_TEST_ARCHES} " == *" amd64 "* ]]; then
 			run_rpm_test "${channel}" amd64 \
-				"$(resolve_package_test_image fedora "${channel}")"
+				"$(resolve_package_test_image fedora "${channel}" amd64)"
 		fi
 	done
 }
