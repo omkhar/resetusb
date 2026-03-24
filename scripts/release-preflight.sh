@@ -28,6 +28,7 @@ BUILDER_ROOT="$(
 SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
 WORK_ROOT="${WORK_ROOT:-${SOURCE_ROOT}}"
 DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
+CONTAINER_UID_GID="$(id -u):$(id -g)"
 
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
@@ -71,6 +72,7 @@ docker build --platform=linux/amd64 \
 
 echo "==> Running Linux release preflight"
 docker run --rm --platform=linux/amd64 \
+	--user "${CONTAINER_UID_GID}" \
 	-v "${SOURCE_ROOT}":/source \
 	-w /source \
 	"${PREFLIGHT_IMAGE}" \
@@ -98,7 +100,7 @@ SOURCE_ROOT="${SOURCE_ROOT}" \
 
 echo "==> Running gitleaks history scan"
 docker run --rm \
-	-v "${SOURCE_ROOT}":/repo \
+	-v "${SOURCE_ROOT}":/repo:ro \
 	-w /repo \
 	"${GITLEAKS_IMAGE}" \
 	git /repo --log-opts="--all" --no-banner --redact --exit-code 1

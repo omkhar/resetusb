@@ -96,6 +96,7 @@ BUILDER_ROOT="$(
 SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
 DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
+CONTAINER_UID_GID="$(id -u):$(id -g)"
 
 require_cmd docker
 require_cmd find
@@ -116,9 +117,9 @@ cleanup() {
 	fi
 
 	docker run --rm --platform=linux/amd64 \
-		-v "${repro_check_dir}":/repro \
+		-v "${repro_check_dir}":/tmp/resetusb-repro-check \
 		"${BUILDER_IMAGE}" \
-		bash -lc 'rm -rf /repro/* /repro/.[!.]* /repro/..?*' >/dev/null 2>&1 || true
+		bash -lc 'rm -rf /tmp/resetusb-repro-check/* /tmp/resetusb-repro-check/.[!.]* /tmp/resetusb-repro-check/..?*' >/dev/null 2>&1 || true
 	rm -rf "${repro_check_dir}" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -132,15 +133,16 @@ source_git_sha="$(
 )"
 
 docker run --rm --platform=linux/amd64 \
+	--user "${CONTAINER_UID_GID}" \
 	-e GITHUB_SHA="${source_git_sha}" \
 	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
 	-e SOURCE_DATE_EPOCH="${source_date_epoch}" \
 	-e SOURCE_ROOT=/source \
-	-e DIST_DIR=/repro/dist \
+	-e DIST_DIR=/tmp/resetusb-repro-check/dist \
 	-e WORK_DIR=/tmp/resetusb-build \
 	-v "${BUILDER_ROOT}":/builder:ro \
-	-v "${repro_check_dir}":/repro \
+	-v "${repro_check_dir}":/tmp/resetusb-repro-check \
 	-v "${SOURCE_ROOT}":/source \
 	-w /source \
 	"${BUILDER_IMAGE}" \

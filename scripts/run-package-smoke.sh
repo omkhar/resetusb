@@ -64,6 +64,7 @@ WORK_ROOT="${WORK_ROOT:-${SOURCE_ROOT}}"
 DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 BUILD_BUILDER_IMAGE="${BUILD_BUILDER_IMAGE:-0}"
+CONTAINER_UID_GID="$(id -u):$(id -g)"
 
 validate_image_ref "BUILDER_IMAGE" "${BUILDER_IMAGE}"
 require_cmd docker
@@ -91,6 +92,7 @@ DIST_DIR="$(
 dist_mount_root="$(dirname -- "${DIST_DIR}")"
 dist_mount_name="$(basename -- "${DIST_DIR}")"
 docker run --rm --platform=linux/amd64 \
+	--user "${CONTAINER_UID_GID}" \
 	-e GITHUB_SHA="${source_git_sha}" \
 	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \

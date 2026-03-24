@@ -262,7 +262,7 @@ run_deb_test() {
 	echo "==> ${distro}/${channel}/${arch}"
 	docker run --rm \
 		--platform="${ARCH_PLATFORM[${arch}]}" \
-		-v "${WORK_ROOT}":/work \
+		-v "${WORK_ROOT}":/work:ro \
 		-v "${DIST_DIR}":/dist:ro \
 		-w /work \
 		"${image}" \
@@ -317,7 +317,7 @@ run_rpm_test() {
 	echo "==> fedora/${channel}/${arch}"
 	docker run --rm \
 		--platform="${ARCH_PLATFORM[${arch}]}" \
-		-v "${WORK_ROOT}":/work \
+		-v "${WORK_ROOT}":/work:ro \
 		-v "${DIST_DIR}":/dist:ro \
 		-w /work \
 		"${image}" \
