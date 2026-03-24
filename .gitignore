@@ -46,6 +46,10 @@ dist/
 *.idb
 *.pdb
 
+# Local developer-only config
+.resetusb.local
+.resetusb.local.*
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
