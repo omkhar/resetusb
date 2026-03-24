@@ -84,17 +84,23 @@ source_date_epoch="$(resolve_source_date_epoch)"
 
 echo "==> Building release artifacts"
 mkdir -p "${DIST_DIR}"
+DIST_DIR="$(
+	cd -- "$(dirname -- "${DIST_DIR}")"
+	printf '%s/%s\n' "$(pwd -P)" "$(basename -- "${DIST_DIR}")"
+)"
+dist_mount_root="$(dirname -- "${DIST_DIR}")"
+dist_mount_name="$(basename -- "${DIST_DIR}")"
 docker run --rm --platform=linux/amd64 \
 	-e GITHUB_SHA="${source_git_sha}" \
 	-e GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
 	-e SOURCE_DATE_EPOCH="${source_date_epoch}" \
 	-e SOURCE_ROOT=/source \
-	-e DIST_DIR=/source/dist \
+	-e DIST_DIR="/tmp/resetusb-dist/${dist_mount_name}" \
 	-e WORK_DIR=/tmp/resetusb-build \
 	-v "${BUILDER_ROOT}":/builder:ro \
 	-v "${SOURCE_ROOT}":/source \
-	-v "${DIST_DIR}":/source/dist \
+	-v "${dist_mount_root}":/tmp/resetusb-dist \
 	-w /source \
 	"${BUILDER_IMAGE}" \
 	bash -lc '/builder/scripts/build-release-artifacts.sh'
