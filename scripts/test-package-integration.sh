@@ -11,10 +11,12 @@ REPO_ROOT="$(
 
 WORK_ROOT="${WORK_ROOT:-${REPO_ROOT}}"
 DIST_DIR="${DIST_DIR:-${REPO_ROOT}/dist}"
+PACKAGE_TEST_IMAGE_LOCK_FILE="${PACKAGE_TEST_IMAGE_LOCK_FILE:-${REPO_ROOT}/docker/package-test-images.lock}"
 PACKAGE_TEST_CHANNELS="${PACKAGE_TEST_CHANNELS:-stable unstable}"
 PACKAGE_TEST_ARCHES="${PACKAGE_TEST_ARCHES:-amd64 arm64 armv7}"
 SEMVER_RELEASE_TAG_REGEX='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 DEV_ARTIFACT_VERSION_REGEX='^dev-[0-9a-f]{12}$'
+LOCKED_IMAGE_REF_REGEX='^[a-z0-9./_-]+(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$'
 ARTIFACT_VERSION_RESOLVED=""
 
 declare -A ARCH_PLATFORM=(
@@ -33,6 +35,75 @@ declare -A ARCH_RPM=(
 	[amd64]="x86_64"
 	[arm64]="aarch64"
 )
+
+validate_locked_image_ref() {
+	local name="$1"
+	local value="$2"
+
+	if [[ ! "${value}" =~ ${LOCKED_IMAGE_REF_REGEX} ]]; then
+		echo "Unexpected ${name}: ${value}" >&2
+		exit 1
+	fi
+}
+
+load_package_test_image_lock() {
+	local required_vars=(
+		DEBIAN_STABLE_IMAGE
+		DEBIAN_UNSTABLE_IMAGE
+		UBUNTU_STABLE_IMAGE
+		UBUNTU_UNSTABLE_IMAGE
+		FEDORA_STABLE_IMAGE
+		FEDORA_UNSTABLE_IMAGE
+	)
+	local name
+
+	if [[ ! -f "${PACKAGE_TEST_IMAGE_LOCK_FILE}" ]]; then
+		echo "Package test image lock file not found: ${PACKAGE_TEST_IMAGE_LOCK_FILE}" >&2
+		exit 1
+	fi
+
+	# shellcheck disable=SC1090
+	source "${PACKAGE_TEST_IMAGE_LOCK_FILE}"
+
+	for name in "${required_vars[@]}"; do
+		if [[ -z "${!name:-}" ]]; then
+			echo "Package test image lock is missing ${name}" >&2
+			exit 1
+		fi
+
+		validate_locked_image_ref "${name}" "${!name}"
+	done
+}
+
+resolve_package_test_image() {
+	local distro="$1"
+	local channel="$2"
+
+	case "${distro}:${channel}" in
+		debian:stable)
+			printf '%s\n' "${DEBIAN_STABLE_IMAGE}"
+			;;
+		debian:unstable)
+			printf '%s\n' "${DEBIAN_UNSTABLE_IMAGE}"
+			;;
+		ubuntu:stable)
+			printf '%s\n' "${UBUNTU_STABLE_IMAGE}"
+			;;
+		ubuntu:unstable)
+			printf '%s\n' "${UBUNTU_UNSTABLE_IMAGE}"
+			;;
+		fedora:stable)
+			printf '%s\n' "${FEDORA_STABLE_IMAGE}"
+			;;
+		fedora:unstable)
+			printf '%s\n' "${FEDORA_UNSTABLE_IMAGE}"
+			;;
+		*)
+			echo "Unsupported package test target: ${distro}/${channel}" >&2
+			exit 1
+			;;
+	esac
+}
 
 require_artifact_version() {
 	local version="$1"
@@ -192,16 +263,17 @@ run_deb_test() {
 	docker run --rm \
 		--platform="${ARCH_PLATFORM[${arch}]}" \
 		-v "${WORK_ROOT}":/work \
+		-v "${DIST_DIR}":/dist:ro \
 		-w /work \
 		"${image}" \
 		sh -euxc '
 			export DEBIAN_FRONTEND=noninteractive
 			apt-get update
 			apt-get install -y --no-install-recommends ca-certificates passwd
-			dpkg-deb -I ./dist/'"$(basename "${package_file}")"' | grep -q "Package: resetusb"
-			dpkg-deb -I ./dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
-			dpkg-deb -c ./dist/'"$(basename "${package_file}")"' | grep -Eq "usr/share/man/man8/resetusb\\.8(\\.gz)?$"
-			apt-get install -y ./dist/'"$(basename "${package_file}")"'
+			dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Package: resetusb"
+			dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
+			dpkg-deb -c /dist/'"$(basename "${package_file}")"' | grep -Eq "usr/share/man/man8/resetusb\\.8(\\.gz)?$"
+			apt-get install -y /dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
 			ldd /usr/sbin/resetusb | grep -q libusb
 			useradd -m tester
@@ -213,7 +285,7 @@ run_deb_test() {
 			grep -q "Must be root" /tmp/pkg.err
 
 			mkdir -p /tmp/tarball
-			tar -xzf ./dist/'"$(basename "${tarball_file}")"' -C /tmp/tarball
+			tar -xzf /dist/'"$(basename "${tarball_file}")"' -C /tmp/tarball
 			binary="$(find /tmp/tarball -type f -name resetusb | head -n 1)"
 			test -x "$binary"
 			find /tmp/tarball -type f -name "resetusb.8*" | grep -q .
@@ -246,13 +318,14 @@ run_rpm_test() {
 	docker run --rm \
 		--platform="${ARCH_PLATFORM[${arch}]}" \
 		-v "${WORK_ROOT}":/work \
+		-v "${DIST_DIR}":/dist:ro \
 		-w /work \
 		"${image}" \
 		sh -euxc '
-			rpm -qpi ./dist/'"$(basename "${package_file}")"' | grep -Eq "^Name[[:space:]]*: resetusb$"
-			rpm -qpi ./dist/'"$(basename "${package_file}")"' | grep -Eq "^Architecture[[:space:]]*: '"${rpm_arch}"'$"
-			rpm -qlp ./dist/'"$(basename "${package_file}")"' | grep -Eq "^/usr/share/man/man8/resetusb\\.8(\\.gz)?$"
-			dnf install -y shadow-utils util-linux ./dist/'"$(basename "${package_file}")"'
+			rpm -qpi /dist/'"$(basename "${package_file}")"' | grep -Eq "^Name[[:space:]]*: resetusb$"
+			rpm -qpi /dist/'"$(basename "${package_file}")"' | grep -Eq "^Architecture[[:space:]]*: '"${rpm_arch}"'$"
+			rpm -qlp /dist/'"$(basename "${package_file}")"' | grep -Eq "^/usr/share/man/man8/resetusb\\.8(\\.gz)?$"
+			dnf install -y shadow-utils util-linux /dist/'"$(basename "${package_file}")"'
 			test -x /usr/sbin/resetusb
 			ldd /usr/sbin/resetusb | grep -q libusb
 			useradd -m tester
@@ -264,7 +337,7 @@ run_rpm_test() {
 			grep -q "Must be root" /tmp/pkg.err
 
 			mkdir -p /tmp/tarball
-			tar -xzf ./dist/'"$(basename "${tarball_file}")"' -C /tmp/tarball
+			tar -xzf /dist/'"$(basename "${tarball_file}")"' -C /tmp/tarball
 			binary="$(find /tmp/tarball -type f -name resetusb | head -n 1)"
 			test -x "$binary"
 			find /tmp/tarball -type f -name "resetusb.8*" | grep -q .
@@ -282,6 +355,8 @@ main() {
 	local channel
 	local arch
 
+	load_package_test_image_lock
+
 	if [[ ! -d "${DIST_DIR}" ]]; then
 		echo "Artifact directory not found: ${DIST_DIR}" >&2
 		exit 1
@@ -292,14 +367,14 @@ main() {
 	for channel in ${PACKAGE_TEST_CHANNELS}; do
 		for arch in ${PACKAGE_TEST_ARCHES}; do
 			run_deb_test debian "${channel}" "${arch}" \
-				"debian:$([[ "${channel}" == stable ]] && echo stable || echo sid)"
+				"$(resolve_package_test_image debian "${channel}")"
 			run_deb_test ubuntu "${channel}" "${arch}" \
-				"ubuntu:$([[ "${channel}" == stable ]] && echo 24.04 || echo devel)"
+				"$(resolve_package_test_image ubuntu "${channel}")"
 		done
 
 		if [[ " ${PACKAGE_TEST_ARCHES} " == *" amd64 "* ]]; then
 			run_rpm_test "${channel}" amd64 \
-				"fedora:$([[ "${channel}" == stable ]] && echo latest || echo rawhide)"
+				"$(resolve_package_test_image fedora "${channel}")"
 		fi
 	done
 }
