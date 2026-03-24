@@ -90,11 +90,11 @@ docker run --rm --platform=linux/amd64 \
 	-e GITHUB_REF_TYPE="${GITHUB_REF_TYPE:-}" \
 	-e SOURCE_DATE_EPOCH="${source_date_epoch}" \
 	-e SOURCE_ROOT=/source \
-	-e DIST_DIR=/dist \
+	-e DIST_DIR=/source/dist \
 	-e WORK_DIR=/tmp/resetusb-build \
 	-v "${BUILDER_ROOT}":/builder:ro \
-	-v "${DIST_DIR}":/dist \
 	-v "${SOURCE_ROOT}":/source \
+	-v "${DIST_DIR}":/source/dist \
 	-w /source \
 	"${BUILDER_IMAGE}" \
 	bash -lc '/builder/scripts/build-release-artifacts.sh'
