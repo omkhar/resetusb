@@ -147,6 +147,20 @@ int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
 			continue;
 		}
 
+		if (handle == NULL) {
+			fprintf(err,
+				"Can't open bus %u device %u (%04x:%04x): "
+				"null handle\n",
+				(unsigned int)ops->libusb_get_bus_number(
+					device),
+				(unsigned int)ops->libusb_get_device_address(
+					device),
+				(unsigned int)descriptor.idVendor,
+				(unsigned int)descriptor.idProduct);
+			failures++;
+			continue;
+		}
+
 		if (descriptor.iProduct != 0U) {
 			int len = ops->libusb_get_string_descriptor_ascii(
 				handle, descriptor.iProduct,

@@ -438,6 +438,30 @@ static void test_successful_reset(void)
 	free(err);
 }
 
+static void test_open_success_with_null_handle_counted(void)
+{
+	reset_fake();
+	g_fake.handles[0] = NULL;
+
+	char *out = NULL;
+	char *err = NULL;
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
+
+	assert(rc == 1);
+	assert(g_fake.string_calls[0] == 0);
+	assert(g_fake.reset_calls[0] == 0);
+	assert(g_fake.close_calls[0] == 0);
+	assert(out != NULL &&
+	       strstr(out, "Summary: reset 0 device(s), 1 failure(s)") != NULL);
+	assert(err != NULL &&
+	       strstr(err,
+		      "Can't open bus 1 device 2 (1234:5678): null handle") !=
+		       NULL);
+
+	free(out);
+	free(err);
+}
+
 static void test_mixed_failures_counted(void)
 {
 	reset_fake();
@@ -627,6 +651,8 @@ int main(void)
 	run_test("null_device_list_rejected", test_null_device_list_rejected);
 	run_test("empty_device_list_succeeds", test_empty_device_list_succeeds);
 	run_test("successful_reset", test_successful_reset);
+	run_test("open_success_with_null_handle_counted",
+		 test_open_success_with_null_handle_counted);
 	run_test("mixed_failures_counted", test_mixed_failures_counted);
 	run_test("reset_failure_closes_handle",
 		 test_reset_failure_closes_handle);
