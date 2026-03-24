@@ -64,6 +64,9 @@ REF_TYPE="${GITHUB_REF_TYPE:-}"
 ARTIFACT_VERSION_OVERRIDE="${ARTIFACT_VERSION:-}"
 PACKAGE_VERSION_OVERRIDE="${PACKAGE_VERSION:-}"
 SEMVER_RELEASE_TAG_REGEX='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+PACKAGE_VERSION_REGEX='^[A-Za-z0-9.+~]+$'
+MAINTAINER_REGEX='^[A-Za-z0-9][A-Za-z0-9 .,@_:+<>()-]*$'
+HOMEPAGE_REGEX='^https?://[A-Za-z0-9./:@?&=%_+~-]+$'
 
 if [[ $# -gt 0 ]]; then
 	ARTIFACT_VERSION="$1"
@@ -135,13 +138,69 @@ require_cmd() {
 	}
 }
 
+validate_single_line_value() {
+	local name="$1"
+	local value="$2"
+
+	if [[ -z "${value}" ]]; then
+		echo "${name} must not be empty" >&2
+		exit 1
+	fi
+
+	if [[ "${value}" == *$'\n'* || "${value}" == *$'\r'* ]]; then
+		echo "${name} must be a single line" >&2
+		exit 1
+	fi
+}
+
+validate_regex_value() {
+	local name="$1"
+	local value="$2"
+	local pattern="$3"
+
+	validate_single_line_value "${name}" "${value}"
+	if [[ ! "${value}" =~ ${pattern} ]]; then
+		echo "Unexpected ${name}: ${value}" >&2
+		exit 1
+	fi
+}
+
+validate_regex_value "PACKAGE_VERSION" "${PACKAGE_VERSION}" \
+	"${PACKAGE_VERSION_REGEX}"
+validate_regex_value "MAINTAINER" "${MAINTAINER}" "${MAINTAINER_REGEX}"
+validate_regex_value "HOMEPAGE" "${HOMEPAGE}" "${HOMEPAGE_REGEX}"
+
 expect_non_root_error() {
 	local log_file="$1"
 	shift
 	local rc=0
 
 	set +e
-	runuser -u nobody -- "$@" > /dev/null 2>"${log_file}"
+	if [[ "$(id -u)" -eq 0 ]]; then
+		local non_root_user=""
+
+		require_cmd runuser
+		if id -u nobody >/dev/null 2>&1; then
+			non_root_user="nobody"
+		elif command -v getent >/dev/null 2>&1; then
+			non_root_user="$(
+				getent passwd | awk -F: '$3 > 0 {print $1; exit}'
+			)"
+		elif [[ -r /etc/passwd ]]; then
+			non_root_user="$(
+				awk -F: '$3 > 0 {print $1; exit}' /etc/passwd
+			)"
+		fi
+
+		if [[ -z "${non_root_user}" ]]; then
+			echo "Unable to find a non-root user for smoke test" >&2
+			exit 1
+		fi
+
+		runuser -u "${non_root_user}" -- "$@" > /dev/null 2>"${log_file}"
+	else
+		"$@" > /dev/null 2>"${log_file}"
+	fi
 	rc=$?
 	set -e
 
@@ -263,6 +322,7 @@ create_rpm_package() {
 	local rpm_root
 	local spec_path
 	local built_rpm
+	local -a built_rpms=()
 	local artifact="${DIST_DIR}/resetusb-${ARTIFACT_VERSION}-fedora-${rpm_arch}.rpm"
 
 	rpm_root="$(mktemp -d)"
@@ -325,7 +385,19 @@ EOF
 		--target "${rpm_arch}" \
 		-bb "${spec_path}"
 
-	built_rpm="$(find "${rpm_root}/RPMS" -type f -name '*.rpm' | head -n 1)"
+	mapfile -t built_rpms < <(
+		find "${rpm_root}/RPMS" -type f -name '*.rpm' | sort
+	)
+	if [[ ${#built_rpms[@]} -eq 0 ]]; then
+		echo "rpmbuild produced no RPM output for ${arch}" >&2
+		exit 1
+	fi
+	if [[ ${#built_rpms[@]} -ne 1 ]]; then
+		printf 'Expected exactly one RPM for %s, found: %s\n' \
+			"${arch}" "${built_rpms[*]}" >&2
+		exit 1
+	fi
+	built_rpm="${built_rpms[0]}"
 	install -m 0644 "${built_rpm}" "${artifact}"
 	rm -rf "${rpm_root}"
 }
@@ -351,7 +423,6 @@ main() {
 	require_cmd gzip
 	require_cmd make
 	require_cmd rpmbuild
-	require_cmd runuser
 	require_cmd sha256sum
 	require_cmd tar
 

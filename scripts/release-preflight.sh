@@ -9,6 +9,16 @@ require_cmd() {
 	}
 }
 
+validate_image_ref() {
+	local name="$1"
+	local value="$2"
+
+	if [[ ! "${value}" =~ ^[A-Za-z0-9./:@_-]+$ ]]; then
+		echo "Unexpected ${name}: ${value}" >&2
+		exit 1
+	fi
+}
+
 SCRIPT_DIR="$(
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 )"
@@ -22,6 +32,10 @@ DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
 GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9}"
+
+validate_image_ref "BUILDER_IMAGE" "${BUILDER_IMAGE}"
+validate_image_ref "PREFLIGHT_IMAGE" "${PREFLIGHT_IMAGE}"
+validate_image_ref "GITLEAKS_IMAGE" "${GITLEAKS_IMAGE}"
 
 require_cmd docker
 
