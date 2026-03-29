@@ -399,9 +399,11 @@ jobs:
           test -f "${artifact_path}"
           test -f "${sbom_path}"
 
-          printf 'name=%s\n' "${ARTIFACT_NAME}" >> "${GITHUB_OUTPUT}"
-          printf 'path=%s\n' "${artifact_path}" >> "${GITHUB_OUTPUT}"
-          printf 'sbom_path=%s\n' "${sbom_path}" >> "${GITHUB_OUTPUT}"
+          {
+            printf 'name=%s\n' "${ARTIFACT_NAME}"
+            printf 'path=%s\n' "${artifact_path}"
+            printf 'sbom_path=%s\n' "${sbom_path}"
+          } >> "${GITHUB_OUTPUT}"
       - name: Generate GitHub provenance attestation
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:

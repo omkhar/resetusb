@@ -80,10 +80,12 @@ jobs:
             exit 1
           fi
 
-          printf 'builder_sha=%s\n' "${builder_sha}" >> "${GITHUB_OUTPUT}"
-          printf 'release_tag=%s\n' "${release_tag}" >> "${GITHUB_OUTPUT}"
-          printf 'source_ref=refs/tags/%s\n' "${release_tag}" >> "${GITHUB_OUTPUT}"
-          printf 'source_digest=%s\n' "${source_digest}" >> "${GITHUB_OUTPUT}"
+          {
+            printf 'builder_sha=%s\n' "${builder_sha}"
+            printf 'release_tag=%s\n' "${release_tag}"
+            printf 'source_ref=refs/tags/%s\n' "${release_tag}"
+            printf 'source_digest=%s\n' "${source_digest}"
+          } >> "${GITHUB_OUTPUT}"
 
   release-preflight:
     name: release-preflight
