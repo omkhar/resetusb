@@ -385,9 +385,11 @@ run_deb_test() {
 				binary="$(find /tarball -type f -name resetusb | head -n 1)"
 				test -x "$binary"
 				find /tarball -type f -name "resetusb.8*" | grep -q .
-				ldd "$binary" | grep -q libusb
+				mkdir -p /tmp/tarball-bin
+				install -m 0755 "$binary" /tmp/tarball-bin/resetusb
+				ldd /tmp/tarball-bin/resetusb | grep -q libusb
 				set +e
-				su -s /bin/sh -c "$binary" tester >/tmp/tar.out 2>/tmp/tar.err
+				su -s /bin/sh -c /tmp/tarball-bin/resetusb tester >/tmp/tar.out 2>/tmp/tar.err
 				rc=$?
 				set -e
 				test "$rc" -ne 0
@@ -443,9 +445,11 @@ run_rpm_test() {
 				binary="$(find /tarball -type f -name resetusb | head -n 1)"
 				test -x "$binary"
 				find /tarball -type f -name "resetusb.8*" | grep -q .
-				ldd "$binary" | grep -q libusb
+				mkdir -p /tmp/tarball-bin
+				install -m 0755 "$binary" /tmp/tarball-bin/resetusb
+				ldd /tmp/tarball-bin/resetusb | grep -q libusb
 				set +e
-				su -s /bin/sh -c "$binary" tester >/tmp/tar.out 2>/tmp/tar.err
+				su -s /bin/sh -c /tmp/tarball-bin/resetusb tester >/tmp/tar.out 2>/tmp/tar.err
 				rc=$?
 				set -e
 				test "$rc" -ne 0
