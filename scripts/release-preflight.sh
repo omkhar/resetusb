@@ -19,6 +19,36 @@ validate_image_ref() {
 	fi
 }
 
+normalize_arch() {
+	local raw="$1"
+
+	case "${raw}" in
+		x86_64 | amd64)
+			printf '%s\n' amd64
+			;;
+		aarch64 | arm64)
+			printf '%s\n' arm64
+			;;
+		*)
+			echo "Unsupported container architecture: ${raw}" >&2
+			exit 1
+			;;
+	esac
+}
+
+resolve_prefight_platform() {
+	local server_arch
+
+	server_arch="$(
+		docker version --format '{{.Server.Arch}}' 2>/dev/null || true
+	)"
+	if [[ -z "${server_arch}" || "${server_arch}" == "<no value>" ]]; then
+		server_arch="$(uname -m)"
+	fi
+
+	printf 'linux/%s\n' "$(normalize_arch "${server_arch}")"
+}
+
 SCRIPT_DIR="$(
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 )"
@@ -33,10 +63,14 @@ CONTAINER_UID_GID="$(id -u):$(id -g)"
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
 GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9}"
+RELEASE_PLATFORM="${RELEASE_PLATFORM:-linux/amd64}"
+PREFLIGHT_PLATFORM="${PREFLIGHT_PLATFORM:-$(resolve_prefight_platform)}"
+PREFLIGHT_BUILDER_IMAGE="${PREFLIGHT_BUILDER_IMAGE:-resetusb-release-builder:preflight-native}"
 
 validate_image_ref "BUILDER_IMAGE" "${BUILDER_IMAGE}"
 validate_image_ref "PREFLIGHT_IMAGE" "${PREFLIGHT_IMAGE}"
 validate_image_ref "GITLEAKS_IMAGE" "${GITLEAKS_IMAGE}"
+validate_image_ref "PREFLIGHT_BUILDER_IMAGE" "${PREFLIGHT_BUILDER_IMAGE}"
 
 require_cmd docker
 
@@ -47,12 +81,21 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> Building release builder image"
-"${BUILDER_ROOT}"/scripts/docker-build-release-builder.sh --platform=linux/amd64 \
+"${BUILDER_ROOT}"/scripts/docker-build-release-builder.sh --platform="${RELEASE_PLATFORM}" \
 	-f "${BUILDER_ROOT}/docker/release-builder.Dockerfile" \
 	-t "${BUILDER_IMAGE}" "${BUILDER_ROOT}"
 
+if [[ "${PREFLIGHT_PLATFORM}" == "${RELEASE_PLATFORM}" ]]; then
+	PREFLIGHT_BUILDER_IMAGE="${BUILDER_IMAGE}"
+else
+	echo "==> Building native preflight builder image"
+	"${BUILDER_ROOT}"/scripts/docker-build-release-builder.sh --platform="${PREFLIGHT_PLATFORM}" \
+		-f "${BUILDER_ROOT}/docker/release-builder.Dockerfile" \
+		-t "${PREFLIGHT_BUILDER_IMAGE}" "${BUILDER_ROOT}"
+fi
+
 cat >"${tmp_dockerfile}" <<EOF
-FROM ${BUILDER_IMAGE}
+FROM ${PREFLIGHT_BUILDER_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
 RUN set -eux; \
     echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries; \
@@ -67,11 +110,11 @@ RUN set -eux; \
 EOF
 
 echo "==> Building release preflight image"
-docker build --platform=linux/amd64 \
+docker build --platform="${PREFLIGHT_PLATFORM}" \
 	-f "${tmp_dockerfile}" -t "${PREFLIGHT_IMAGE}" "${BUILDER_ROOT}"
 
 echo "==> Running Linux release preflight"
-docker run --rm --platform=linux/amd64 \
+docker run --rm --platform="${PREFLIGHT_PLATFORM}" \
 	--user "${CONTAINER_UID_GID}" \
 	-v "${SOURCE_ROOT}":/source \
 	-w /source \
