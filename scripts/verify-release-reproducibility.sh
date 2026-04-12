@@ -108,7 +108,11 @@ if [[ ! -d "${DIST_DIR}" ]]; then
 fi
 
 source_date_epoch="$(resolve_source_date_epoch)"
-repro_check_dir="$(mktemp -d "${TMPDIR:-/tmp}/resetusb-repro-check.XXXXXX")"
+# On macOS/Colima bind mounts, directories created under TMPDIR can appear as
+# root-owned inside the Linux container even when the caller UID is mapped
+# through. Creating the scratch tree under SOURCE_ROOT keeps the rebuild output
+# writable to the unprivileged container user we use for reproducibility checks.
+repro_check_dir="$(mktemp -d "${SOURCE_ROOT}/.resetusb-repro-check.XXXXXX")"
 repro_dist_dir="${repro_check_dir}/dist"
 mkdir -p "${repro_dist_dir}"
 cleanup() {
