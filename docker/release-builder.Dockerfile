@@ -2,6 +2,7 @@ FROM debian:trixie@sha256:3352c2e13876c8a5c5873ef20870e1939e73cb9a3c1aeba5e3e721
 
 ARG DEBIAN_SNAPSHOT_URL
 ARG DEBIAN_SNAPSHOT_TIMESTAMP
+ARG DEBIAN_SNAPSHOT_INRELEASE_SHA256
 ARG DEBIAN_SUITE
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -16,6 +17,9 @@ RUN set -eux; \
     dpkg --add-architecture arm64; \
     dpkg --add-architecture armhf; \
     apt-get update; \
+    snapshot_inrelease="/var/lib/apt/lists/snapshot.debian.org_archive_debian_${DEBIAN_SNAPSHOT_TIMESTAMP}_dists_${DEBIAN_SUITE}_InRelease"; \
+    test -f "${snapshot_inrelease}"; \
+    echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  ${snapshot_inrelease}" | sha256sum --check --strict; \
     apt-get install -y --no-install-recommends \
       dpkg-dev \
       file \

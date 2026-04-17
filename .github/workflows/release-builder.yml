@@ -219,6 +219,7 @@ jobs:
               "DEBIAN_BASE_IMAGE",
               "DEBIAN_SNAPSHOT_URL",
               "DEBIAN_SNAPSHOT_TIMESTAMP",
+              "DEBIAN_SNAPSHOT_INRELEASE_SHA256",
               "DEBIAN_SUITE",
           }
           missing_keys = sorted(required_keys.difference(builder_lock))
@@ -251,16 +252,17 @@ jobs:
               raise SystemExit("no primary artifacts were built")
 
           manifest = {
-              "format_version": 2,
+              "format_version": 3,
               "release_tag": os.environ["RELEASE_TAG"],
               "source_digest": os.environ["SOURCE_DIGEST"],
               "builder_digest": os.environ["BUILDER_SHA"],
-              "builder_workflow": f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/.github/workflows/release-builder.yml@refs/heads/main',
+              "builder_workflow": f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/.github/workflows/release-builder.yml@refs/tags/{os.environ["RELEASE_TAG"]}',
               "reproducible_inputs": {
                   "source_date_epoch": int(source_date_epoch),
                   "builder_base_image": builder_lock["DEBIAN_BASE_IMAGE"],
                   "debian_snapshot_url": builder_lock["DEBIAN_SNAPSHOT_URL"],
                   "debian_snapshot_timestamp": builder_lock["DEBIAN_SNAPSHOT_TIMESTAMP"],
+                  "debian_snapshot_inrelease_sha256": builder_lock["DEBIAN_SNAPSHOT_INRELEASE_SHA256"],
                   "debian_suite": builder_lock["DEBIAN_SUITE"],
               },
               "primary_artifacts": primary_artifacts,
@@ -316,9 +318,12 @@ jobs:
             cosign sign-blob --bundle "${artifact}.sigstore.json" "$artifact"
           done
       - name: Verify Sigstore signatures
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
-          identity_regex="^https://github\\.com/${GITHUB_REPOSITORY}/\\.github/workflows/release-builder\\.yml@refs/heads/main$"
+          release_tag_regex="${RELEASE_TAG//./\\.}"
+          identity_regex="^https://github\\.com/${GITHUB_REPOSITORY}/\\.github/workflows/release-builder\\.yml@refs/tags/${release_tag_regex}$"
           shopt -s nullglob
 
           for artifact in source/dist/*; do

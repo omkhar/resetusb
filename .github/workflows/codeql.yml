@@ -23,6 +23,7 @@ env:
   DEBIAN_BASE_IMAGE: debian:trixie@sha256:3352c2e13876c8a5c5873ef20870e1939e73cb9a3c1aeba5e3e72172a85ce9ed
   DEBIAN_SNAPSHOT_URL: http://snapshot.debian.org/archive/debian
   DEBIAN_SNAPSHOT_TIMESTAMP: 20260317T082636Z
+  DEBIAN_SNAPSHOT_INRELEASE_SHA256: 7592e4ccb4658a58bfe485d3356b3c983bf8ccff7fca1f6091e4d4296284ed18
   DEBIAN_SUITE: trixie
 
 jobs:
@@ -55,6 +56,9 @@ jobs:
             "${DEBIAN_SNAPSHOT_URL}" "${DEBIAN_SNAPSHOT_TIMESTAMP}" "${DEBIAN_SUITE}" \
             > /etc/apt/sources.list.d/snapshot.list
           apt-get update
+          snapshot_inrelease="/var/lib/apt/lists/snapshot.debian.org_archive_debian_${DEBIAN_SNAPSHOT_TIMESTAMP}_dists_${DEBIAN_SUITE}_InRelease"
+          test -f "${snapshot_inrelease}"
+          echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  ${snapshot_inrelease}" | sha256sum --check --strict
           apt-get install -y --no-install-recommends ca-certificates git
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -69,6 +73,7 @@ jobs:
           expected_base_image="${DEBIAN_BASE_IMAGE}"
           expected_snapshot_url="${DEBIAN_SNAPSHOT_URL}"
           expected_snapshot_timestamp="${DEBIAN_SNAPSHOT_TIMESTAMP}"
+          expected_snapshot_inrelease_sha256="${DEBIAN_SNAPSHOT_INRELEASE_SHA256}"
           expected_suite="${DEBIAN_SUITE}"
           # shellcheck disable=SC1091
           . ./docker/release-builder.lock
@@ -76,6 +81,7 @@ jobs:
           [[ "${DEBIAN_BASE_IMAGE}" == "${expected_base_image}" ]]
           [[ "${DEBIAN_SNAPSHOT_URL}" == "${expected_snapshot_url}" ]]
           [[ "${DEBIAN_SNAPSHOT_TIMESTAMP}" == "${expected_snapshot_timestamp}" ]]
+          [[ "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}" == "${expected_snapshot_inrelease_sha256}" ]]
           [[ "${DEBIAN_SUITE}" == "${expected_suite}" ]]
 
       - name: Install C/C++ dependencies
