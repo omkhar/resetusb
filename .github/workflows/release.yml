@@ -2,16 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      release_tag:
-        description: Signed semver tag to publish with the builder workflow
-        required: true
-        type: string
 
 permissions: {}
 
 concurrency:
-  group: release-${{ inputs.release_tag || github.event.inputs.release_tag }}
+  group: release-${{ github.ref_name || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -30,7 +25,6 @@ jobs:
         name: Resolve trusted release inputs
         env:
           GH_TOKEN: ${{ github.token }}
-          INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
           REPOSITORY: ${{ github.repository }}
           REF_NAME: ${{ github.ref_name }}
           REF_TYPE: ${{ github.ref_type }}
@@ -39,21 +33,15 @@ jobs:
           set -euo pipefail
           semver_regex='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 
-          if [[ "${REF_TYPE}" != "branch" || "${REF_NAME}" != "main" ]]; then
-            echo "Trusted release runs must be dispatched from main" >&2
+          if [[ "${REF_TYPE}" != "tag" ]]; then
+            echo "Trusted release runs must be dispatched from the signed release tag" >&2
             exit 1
           fi
 
-          release_tag="${INPUT_RELEASE_TAG}"
+          release_tag="${REF_NAME}"
 
           if [[ ! "${release_tag}" =~ ${semver_regex} ]]; then
             echo "Release runs require a signed semver tag in the form vMAJOR.MINOR.PATCH" >&2
-            exit 1
-          fi
-
-          builder_sha="${WORKFLOW_SHA}"
-          if [[ ! "${builder_sha}" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Unable to resolve the pinned builder SHA from the trusted main workflow" >&2
             exit 1
           fi
 
@@ -65,6 +53,18 @@ jobs:
             echo "Unable to resolve the signed release tag to an immutable commit digest" >&2
             exit 1
           fi
+
+          if [[ ! "${WORKFLOW_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Unable to resolve the workflow revision for the signed release tag" >&2
+            exit 1
+          fi
+
+          if [[ "${WORKFLOW_SHA}" != "${source_digest}" ]]; then
+            echo "Trusted release runs must use the workflow revision embedded in ${release_tag}" >&2
+            exit 1
+          fi
+
+          builder_sha="${source_digest}"
 
           release_exists=false
           release_is_draft=false
@@ -223,7 +223,8 @@ jobs:
           set -euo pipefail
           manifest_path="dist/resetusb-${RELEASE_TAG}-release-manifest.json"
           bundle_path="${manifest_path}.sigstore.json"
-          identity_regex="^https://github\\.com/${GITHUB_REPOSITORY}/\\.github/workflows/release-builder\\.yml@refs/heads/main$"
+          release_tag_regex="${RELEASE_TAG//./\\.}"
+          identity_regex="^https://github\\.com/${GITHUB_REPOSITORY}/\\.github/workflows/release-builder\\.yml@refs/tags/${release_tag_regex}$"
 
           test -f "${manifest_path}"
           test -f "${bundle_path}"

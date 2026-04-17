@@ -52,7 +52,7 @@ def validate_manifest(
         },
         "release manifest contains unexpected top-level keys",
     )
-    require(manifest.get("format_version") == 2, "release manifest format_version must be 2")
+    require(manifest.get("format_version") == 3, "release manifest format_version must be 3")
 
     manifest_release_tag = manifest.get("release_tag")
     require(isinstance(manifest_release_tag, str) and SEMVER_RE.fullmatch(manifest_release_tag), "release manifest release_tag must be a semver tag")
@@ -69,17 +69,30 @@ def validate_manifest(
     if builder_digest is not None:
         require(manifest_builder_digest == builder_digest, "release manifest builder digest does not match the trusted builder workflow")
 
-    expected_workflow = f"https://github.com/{repository}/.github/workflows/release-builder.yml@refs/heads/main"
+    workflow_tag = release_tag if release_tag is not None else manifest_release_tag
+    expected_workflow = f"https://github.com/{repository}/.github/workflows/release-builder.yml@refs/tags/{workflow_tag}"
     require(manifest.get("builder_workflow") == expected_workflow, "release manifest builder workflow does not match the trusted builder identity")
 
     reproducible_inputs = manifest.get("reproducible_inputs")
     require(isinstance(reproducible_inputs, dict), "release manifest reproducible_inputs must be a JSON object")
-    require(set(reproducible_inputs) == {"source_date_epoch", "builder_base_image", "debian_snapshot_url", "debian_snapshot_timestamp", "debian_suite"}, "release manifest reproducible_inputs contains unexpected keys")
+    require(
+        set(reproducible_inputs)
+        == {
+            "source_date_epoch",
+            "builder_base_image",
+            "debian_snapshot_url",
+            "debian_snapshot_timestamp",
+            "debian_snapshot_inrelease_sha256",
+            "debian_suite",
+        },
+        "release manifest reproducible_inputs contains unexpected keys",
+    )
     source_date_epoch = reproducible_inputs.get("source_date_epoch")
     require(isinstance(source_date_epoch, int) and source_date_epoch >= 0, "release manifest source_date_epoch must be a non-negative integer")
     require(isinstance(reproducible_inputs.get("builder_base_image"), str) and reproducible_inputs["builder_base_image"], "release manifest builder_base_image must be a non-empty string")
     require(isinstance(reproducible_inputs.get("debian_snapshot_url"), str) and reproducible_inputs["debian_snapshot_url"].startswith(("http://", "https://")), "release manifest debian_snapshot_url must be an HTTP or HTTPS URL")
     require(isinstance(reproducible_inputs.get("debian_snapshot_timestamp"), str) and TIMESTAMP_RE.fullmatch(reproducible_inputs["debian_snapshot_timestamp"]), "release manifest debian_snapshot_timestamp must be a snapshot timestamp")
+    require(isinstance(reproducible_inputs.get("debian_snapshot_inrelease_sha256"), str) and SHA256_RE.fullmatch(reproducible_inputs["debian_snapshot_inrelease_sha256"]), "release manifest debian_snapshot_inrelease_sha256 must be a lowercase sha256 hex string")
     require(isinstance(reproducible_inputs.get("debian_suite"), str) and reproducible_inputs["debian_suite"], "release manifest debian_suite must be a non-empty string")
 
     primary_artifacts = manifest.get("primary_artifacts")

@@ -595,6 +595,28 @@ static void test_zero_length_product_string_unavailable(void)
 	free(err);
 }
 
+static void test_oversized_product_string_length_clamped(void)
+{
+	reset_fake();
+	g_fake.string_rc[0] = 512;
+	g_fake.string_value[0] = "Oversized descriptor";
+
+	char *out = NULL;
+	char *err = NULL;
+	int rc = run_with_capture(&fake_ops, 0, 0, &out, &err);
+
+	assert(rc == 0);
+	assert(err != NULL && strcmp(err, "") == 0);
+	assert(out != NULL &&
+	       strstr(out, "reset bus 1 device 2 (1234:5678) Oversized "
+			   "descriptor") != NULL);
+	assert(out != NULL &&
+	       strstr(out, "Summary: reset 1 device(s), 0 failure(s)") != NULL);
+
+	free(out);
+	free(err);
+}
+
 static void test_null_device_entry_counted(void)
 {
 	reset_fake();
@@ -662,6 +684,8 @@ int main(void)
 		 test_no_product_string_uses_unknown);
 	run_test("zero_length_product_string_unavailable",
 		 test_zero_length_product_string_unavailable);
+	run_test("oversized_product_string_length_clamped",
+		 test_oversized_product_string_length_clamped);
 	run_test("product_name_sanitized", test_product_name_sanitized);
 	run_test("null_device_entry_counted", test_null_device_entry_counted);
 	run_test("mismatched_uids_rejected", test_mismatched_uids_rejected);

@@ -21,6 +21,8 @@ sudo apt-get update
 sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
 ```
 
+If you lint GitHub Actions workflows locally, use `actionlint` `v1.7.10` or newer. `v1.7.8` predates GitHub's `artifact-metadata` permission support and reports a false positive on the release workflows in this repository.
+
 ## Before Opening a PR
 
 Run these checks before opening a pull request:
@@ -62,12 +64,13 @@ make format
 - Public releases use semantic versioning.
 - Bump `MAJOR` for breaking behavior or release-contract changes, `MINOR` for backward-compatible features, and `PATCH` for backward-compatible fixes.
 - Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` at the commit you intend to release (for example `git tag -s vMAJOR.MINOR.PATCH -m "resetusb release vMAJOR.MINOR.PATCH"`).
+- Summarize release-ready changes in `CHANGELOG.md` before cutting the tag.
 - Run `make release-preflight` before cutting the tag. It rebuilds the release artifacts twice and compares digests before publish is allowed to proceed.
-- After pushing a signed semver tag, manually dispatch `release.yml` from `main`. The workflow resolves the signed tag to an immutable commit digest, verifies the tag with the pinned release key, runs `release-preflight`, builds and signs the release artifacts, signs a release manifest for the artifact set, verifies the resulting attestations against the trusted builder workflow revision, and publishes the release.
+- After pushing a signed semver tag, manually dispatch `release.yml` using that same tag as the workflow ref. The workflow verifies that the checked-out workflow revision matches the signed tag digest, runs `release-preflight`, builds and signs the release artifacts, signs a release manifest for the artifact set, verifies the resulting attestations against the trusted builder workflow revision, and publishes the release.
 - Published release tags are immutable. If anything in the release contents changes, merge a fix and cut a new patch version instead of rebuilding or replacing an existing tag.
 - If a release run fails before publication, rerun the workflow for the same tag. The publish step reuses any existing draft, rewrites the draft notes, and replaces the draft assets before publication.
 - The trusted builder inputs live in `docker/release-builder.lock`. If you need to refresh the release toolchain, update that file in the same PR as the builder or packaging change and explain the reason in the PR description.
-- The Debian snapshot URL is intentionally plain HTTP during bootstrap because the pinned base image does not carry CA roots before the first package install. Integrity still comes from the pinned base image digest and Debian archive signing.
+- The Debian snapshot bootstrap path still starts over plain HTTP because the pinned base image does not carry CA roots before the first package install. Integrity comes from the pinned base image digest, Debian archive signing, and the pinned snapshot `InRelease` digest recorded in `docker/release-builder.lock`.
 - Release packaging derives `SOURCE_DATE_EPOCH` from the source commit timestamp and uses the snapshot-pinned builder image so rebuilding the same tag reproduces the primary tarballs and distro packages. Release-time SBOMs and signatures are expected to be regenerated.
 - Ad hoc release-artifact builds now require either git metadata for the source tree or an explicit `SOURCE_DATE_EPOCH`; the trusted workflows export the commit timestamp into the builder automatically.
 - The release manifest contract is versioned in `release-manifest.schema.json`. If you add or rename manifest fields, bump the manifest format version and update the schema, validator, and docs in the same change.

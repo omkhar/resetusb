@@ -55,10 +55,32 @@ SCRIPT_DIR="$(
 BUILDER_ROOT="$(
 	cd -- "${SCRIPT_DIR}/.." && pwd
 )"
+LOCK_FILE="${BUILDER_ROOT}/docker/release-builder.lock"
 SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
 WORK_ROOT="${WORK_ROOT:-${SOURCE_ROOT}}"
 DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
 CONTAINER_UID_GID="$(id -u):$(id -g)"
+
+if [[ ! -f "${LOCK_FILE}" ]]; then
+	echo "release builder lock file not found: ${LOCK_FILE}" >&2
+	exit 1
+fi
+
+# shellcheck disable=SC1090
+source "${LOCK_FILE}"
+
+required_lock_vars=(
+	DEBIAN_SNAPSHOT_TIMESTAMP
+	DEBIAN_SNAPSHOT_INRELEASE_SHA256
+	DEBIAN_SUITE
+)
+
+for name in "${required_lock_vars[@]}"; do
+	if [[ -z "${!name:-}" ]]; then
+		echo "release builder lock is missing ${name}" >&2
+		exit 1
+	fi
+done
 
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
@@ -100,6 +122,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN set -eux; \
     echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries; \
     apt-get update; \
+    snapshot_inrelease="/var/lib/apt/lists/snapshot.debian.org_archive_debian_${DEBIAN_SNAPSHOT_TIMESTAMP}_dists_${DEBIAN_SUITE}_InRelease"; \
+    test -f "\${snapshot_inrelease}"; \
+    echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  \${snapshot_inrelease}" | sha256sum --check --strict; \
     apt-get install -y --no-install-recommends \
       clang \
       clang-format \
