@@ -26,6 +26,22 @@ env:
   DEBIAN_SUITE: trixie
 
 jobs:
+  pr-reviewability:
+    name: pr-reviewability
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Enforce reviewable PR size
+        env:
+          PR_CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+          PR_ADDITIONS: ${{ github.event.pull_request.additions }}
+          PR_DELETIONS: ${{ github.event.pull_request.deletions }}
+        run: |
+          ./scripts/check-reviewable-pr.sh
+
   detect-package-changes:
     name: detect-package-changes
     runs-on: ubuntu-latest
