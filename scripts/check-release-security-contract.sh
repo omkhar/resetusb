@@ -19,9 +19,41 @@ require_literal() {
 	fi
 }
 
+require_literal_after() {
+	local path="$1"
+	local marker="$2"
+	local needle="$3"
+	local max_lines="${4:-80}"
+
+	if ! awk \
+		-v marker="${marker}" \
+		-v needle="${needle}" \
+		-v max_lines="${max_lines}" '
+		index($0, marker) {
+			window = max_lines
+		}
+		window > 0 && index($0, needle) {
+			found = 1
+			exit
+		}
+		window > 0 {
+			window--
+		}
+		END {
+			exit(found ? 0 : 1)
+		}
+	' "${path}"; then
+		echo "Missing expected text after marker in ${path}: ${marker} -> ${needle}" >&2
+		exit 1
+	fi
+}
+
 cd "${REPO_ROOT}"
 
 require_literal "docker/release-builder.lock" "DEBIAN_SNAPSHOT_INRELEASE_SHA256="
+
+# shellcheck disable=SC2016
+snapshot_sha_check='echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  ${snapshot_inrelease}" | sha256sum --check --strict'
 
 for path in \
 	".github/workflows/build-test.yml" \
@@ -32,7 +64,22 @@ for path in \
 	require_literal "${path}" "sha256sum --check --strict"
 done
 
-require_literal ".github/workflows/build-test.yml" "scripts/check-release-security-contract.sh"
+require_literal_after \
+	".github/workflows/build-test.yml" \
+	"name: static-analysis" \
+	"${snapshot_sha_check}"
+require_literal_after \
+	".github/workflows/build-test.yml" \
+	"unit-tests:" \
+	"${snapshot_sha_check}"
+require_literal_after \
+	".github/workflows/build-test.yml" \
+	"name: sanitize" \
+	"${snapshot_sha_check}"
+require_literal_after \
+	".github/workflows/build-test.yml" \
+	"name: Run lint, format, and clang static analysis" \
+	"make lint"
 
 # shellcheck disable=SC2016
 require_literal ".github/workflows/release.yml" 'if [[ "${REF_TYPE}" != "tag" ]]; then'

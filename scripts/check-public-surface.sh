@@ -11,6 +11,11 @@ REPO_ROOT="$(
 
 cd "${REPO_ROOT}"
 
+command -v git >/dev/null 2>&1 || {
+	echo "git not found" >&2
+	exit 1
+}
+
 disallowed_literals=(
 	"/Users/"
 	"/private/tmp/"
@@ -35,7 +40,7 @@ done
 
 for path in "${repo_paths[@]}"; do
 	case "${path}" in
-		*.orig|*.rej|*.bak|*.tmp|*.temp|*.pyc|*~|.DS_Store|*/.DS_Store|__pycache__/*|security-validation|security-validation/*)
+		*.orig|*.rej|*.bak|*.tmp|*.temp|*.pyc|*~|.DS_Store|*/.DS_Store|__pycache__/*|security-validation|security-validation/*|.resetusb-tarball.*|.resetusb-repro-check.*)
 			echo "Tracked repository detritus is not allowed: ${path}" >&2
 			exit 1
 			;;

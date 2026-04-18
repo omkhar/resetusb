@@ -119,6 +119,7 @@ fi
 cat >"${tmp_dockerfile}" <<EOF
 FROM ${PREFLIGHT_BUILDER_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
+COPY scripts/install-actionlint.sh /tmp/install-actionlint.sh
 RUN set -eux; \
     echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries; \
     apt-get update; \
@@ -126,11 +127,16 @@ RUN set -eux; \
     test -f "\${snapshot_inrelease}"; \
     echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  \${snapshot_inrelease}" | sha256sum --check --strict; \
     apt-get install -y --no-install-recommends \
+      ca-certificates \
       clang \
       clang-format \
       clang-tools \
       cppcheck \
+      curl \
+      git \
+      python3 \
       shellcheck; \
+    /bin/bash /tmp/install-actionlint.sh; \
     rm -rf /var/lib/apt/lists/*
 EOF
 
@@ -171,4 +177,4 @@ docker run --rm \
 	-v "${SOURCE_ROOT}":/repo:ro \
 	-w /repo \
 	"${GITLEAKS_IMAGE}" \
-	git /repo --log-opts="--all" --no-banner --redact --exit-code 1
+	git /repo --log-opts=--all --no-banner --redact --exit-code 1
