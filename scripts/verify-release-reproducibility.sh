@@ -60,8 +60,13 @@ compare_artifacts() {
 	local -a left_files=()
 	local -a right_files=()
 
-	mapfile -t left_files < <(list_artifacts "${left_dir}")
-	mapfile -t right_files < <(list_artifacts "${right_dir}")
+	while IFS= read -r file; do
+		left_files+=("${file}")
+	done < <(list_artifacts "${left_dir}")
+
+	while IFS= read -r file; do
+		right_files+=("${file}")
+	done < <(list_artifacts "${right_dir}")
 
 	if [[ ${#left_files[@]} -eq 0 ]]; then
 		echo "No release artifacts found in ${left_dir}" >&2

@@ -286,7 +286,9 @@ discover_artifact_version() {
 		exit 1
 	fi
 
-	mapfile -t unique_versions < <(printf '%s\n' "${versions[@]}" | sort -u)
+	while IFS= read -r version; do
+		unique_versions+=("${version}")
+	done < <(printf '%s\n' "${versions[@]}" | sort -u)
 	if [[ ${#unique_versions[@]} -ne 1 ]]; then
 		printf 'Expected exactly one artifact version in %s, found: %s\n' \
 			"${DIST_DIR}" "${unique_versions[*]}" >&2
