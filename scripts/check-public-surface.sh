@@ -25,6 +25,10 @@ disallowed_literals=(
 	"security-validation/"
 )
 
+disallowed_patterns=(
+	'[[:alnum:]_.%+-]+\.internal(\.[[:alnum:]-]+)+'
+)
+
 mapfile -d '' repo_paths < <(
 	git ls-files --cached --others --exclude-standard -z \
 		':(exclude)scripts/check-public-surface.sh'
@@ -38,10 +42,18 @@ for needle in "${disallowed_literals[@]}"; do
 	fi
 done
 
+for pattern in "${disallowed_patterns[@]}"; do
+	if ((${#repo_paths[@]} > 0)) && grep -I -n -E -- "${pattern}" "${repo_paths[@]}" >/dev/null; then
+		echo "Repository surface contains an internal-only hostname or domain: ${pattern}" >&2
+		grep -I -n -E -- "${pattern}" "${repo_paths[@]}" >&2
+		exit 1
+	fi
+done
+
 for path in "${repo_paths[@]}"; do
 	case "${path}" in
-		*.orig|*.rej|*.bak|*.tmp|*.temp|*.pyc|*~|.DS_Store|*/.DS_Store|__pycache__/*|security-validation|security-validation/*|.resetusb-tarball.*|.resetusb-repro-check.*)
-			echo "Tracked repository detritus is not allowed: ${path}" >&2
+		*.orig|*.rej|*.bak|*.tmp|*.temp|*.pyc|*~|.DS_Store|*/.DS_Store|__pycache__/*|security-validation|security-validation/*|.resetusb-tarball.*|.resetusb-repro-check.*|.resetusb.local|.resetusb.local.*|*/.resetusb.local|*/.resetusb.local.*)
+			echo "Repository detritus is not allowed: ${path}" >&2
 			exit 1
 			;;
 	esac
