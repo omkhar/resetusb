@@ -91,6 +91,21 @@ make fuzz FUZZ_TIME=10
 make release-preflight
 ```
 
+## Agent Control Plane
+
+This repository ships generated `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md`
+files for Codex, Claude, and Gemini.
+
+Canonical shared skills live in `.agents/skills/`. Generated Claude mirrors
+live in `.claude/skills/`.
+
+If you edit the canonical agent-control-plane source or shared skills,
+regenerate the checked-in agent files with the repository render script and
+verify the result with `make lint`.
+
+Keep agent-facing content public-repo safe: do not add internal-only notes,
+local paths, usernames, scratch artifacts, or other repository detritus.
+
 CI covers linting, unit tests, sanitizers, package validation, fuzzing, secret
 scanning, and Scorecard checks.
 

@@ -1,5 +1,6 @@
 CC ?= cc
 CLANG_FORMAT ?= clang-format
+PYTHON ?= python3
 COMMON_CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Wformat -Wformat=2 -Wconversion \
 	-Wimplicit-fallthrough -Wmissing-prototypes -Wstrict-prototypes \
 	-Wshadow -Wvla -Werror -Werror=format-security \
@@ -38,7 +39,8 @@ MAN8DIR ?= $(MANDIR)/man8
 UNAME_S := $(shell uname -s)
 
 .PHONY: all clean install uninstall test lint format check-format sanitize \
-	fuzz release-preflight check-release-contract
+	fuzz release-preflight check-release-contract agent-control-plane \
+	verify-agent-control-plane check-public-surface
 
 ifeq ($(UNAME_S),Linux)
 EFFECTIVE_CFLAGS := $(CFLAGS) $(EXTRA_WARN_CFLAGS) $(HARDEN_CFLAGS)
@@ -113,10 +115,28 @@ lint:
 	else \
 		echo "No shell scripts to lint."; \
 	fi
+	@command -v "$(PYTHON)" >/dev/null 2>&1 || \
+		{ echo "$(PYTHON) not found" >&2; exit 1; }
+	@command -v actionlint >/dev/null 2>&1 || \
+		{ echo "actionlint not found" >&2; exit 1; }
+	@actionlint_version="$$(actionlint -version | sed -n '1p' | sed 's/^v//')"; \
+	"$(PYTHON)" scripts/check-actionlint-version.py "$${actionlint_version}"
+	actionlint
+	$(PYTHON) scripts/render-agent-control-plane.py --check
+	./scripts/check-public-surface.sh
 	./scripts/check-release-security-contract.sh
 
 check-release-contract:
 	./scripts/check-release-security-contract.sh
+
+agent-control-plane:
+	$(PYTHON) scripts/render-agent-control-plane.py
+
+verify-agent-control-plane:
+	$(PYTHON) scripts/render-agent-control-plane.py --check
+
+check-public-surface:
+	./scripts/check-public-surface.sh
 
 clean:
 	rm -f resetusb $(UNIT_TEST_BIN) $(FUZZ_BIN)
