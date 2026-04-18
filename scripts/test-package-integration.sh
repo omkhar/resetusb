@@ -19,30 +19,107 @@ SEMVER_RELEASE_TAG_REGEX='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 DEV_ARTIFACT_VERSION_REGEX='^dev-[0-9a-f]{12}$'
 LOCKED_IMAGE_REF_REGEX='^[a-z0-9./_-]+(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$'
 ARTIFACT_VERSION_RESOLVED=""
+PLATFORM_SUPPORT_VERIFIED=""
 
-declare -A ARCH_PLATFORM=(
-	[amd64]="linux/amd64"
-	[arm64]="linux/arm64"
-	[armv7]="linux/arm/v7"
-)
+resolve_arch_platform() {
+	local arch="$1"
 
-declare -A ARCH_DEB=(
-	[amd64]="amd64"
-	[arm64]="arm64"
-	[armv7]="armhf"
-)
+	case "${arch}" in
+		amd64)
+			printf '%s\n' "linux/amd64"
+			;;
+		arm64)
+			printf '%s\n' "linux/arm64"
+			;;
+		armv7)
+			printf '%s\n' "linux/arm/v7"
+			;;
+		*)
+			echo "Unsupported architecture: ${arch}" >&2
+			exit 1
+			;;
+	esac
+}
 
-declare -A ARCH_RPM=(
-	[amd64]="x86_64"
-	[arm64]="aarch64"
-)
+resolve_deb_arch() {
+	local arch="$1"
 
-declare -A ARCH_BINFMT=(
-	[arm64]="arm64"
-	[armv7]="arm"
-)
+	case "${arch}" in
+		amd64)
+			printf '%s\n' amd64
+			;;
+		arm64)
+			printf '%s\n' arm64
+			;;
+		armv7)
+			printf '%s\n' armhf
+			;;
+		*)
+			echo "Unsupported Debian architecture: ${arch}" >&2
+			exit 1
+			;;
+	esac
+}
 
-declare -A PLATFORM_SUPPORT_VERIFIED=()
+resolve_rpm_arch() {
+	local arch="$1"
+
+	case "${arch}" in
+		amd64)
+			printf '%s\n' x86_64
+			;;
+		arm64)
+			printf '%s\n' aarch64
+			;;
+		*)
+			echo "Unsupported Fedora architecture: ${arch}" >&2
+			exit 1
+			;;
+	esac
+}
+
+resolve_binfmt_arch() {
+	local arch="$1"
+
+	case "${arch}" in
+		arm64)
+			printf '%s\n' arm64
+			;;
+		armv7)
+			printf '%s\n' arm
+			;;
+		*)
+			printf '%s\n' ""
+			;;
+	esac
+}
+
+platform_support_was_verified() {
+	local arch="$1"
+
+	case " ${PLATFORM_SUPPORT_VERIFIED} " in
+		*" ${arch} "*)
+			return 0
+			;;
+	esac
+
+	return 1
+}
+
+mark_platform_support_verified() {
+	local arch="$1"
+
+	case " ${PLATFORM_SUPPORT_VERIFIED} " in
+		*" ${arch} "*)
+			return
+			;;
+	esac
+
+	if [[ -n "${PLATFORM_SUPPORT_VERIFIED}" ]]; then
+		PLATFORM_SUPPORT_VERIFIED="${PLATFORM_SUPPORT_VERIFIED} "
+	fi
+	PLATFORM_SUPPORT_VERIFIED="${PLATFORM_SUPPORT_VERIFIED}${arch}"
+}
 
 validate_locked_image_ref() {
 	local name="$1"
@@ -166,9 +243,12 @@ require_artifact_version() {
 probe_platform_support() {
 	local arch="$1"
 	local image="$2"
+	local platform
+
+	platform="$(resolve_arch_platform "${arch}")"
 
 	docker run --rm \
-		--platform="${ARCH_PLATFORM[${arch}]}" \
+		--platform="${platform}" \
 		--entrypoint /bin/sh \
 		"${image}" \
 		-c 'exit 0' >/dev/null 2>&1
@@ -177,26 +257,30 @@ probe_platform_support() {
 ensure_platform_support() {
 	local arch="$1"
 	local image="$2"
-	local binfmt_arch="${ARCH_BINFMT[${arch}]:-}"
+	local binfmt_arch
+	local platform
 
-	if [[ -n "${PLATFORM_SUPPORT_VERIFIED[${arch}]:-}" ]]; then
+	binfmt_arch="$(resolve_binfmt_arch "${arch}")"
+	platform="$(resolve_arch_platform "${arch}")"
+
+	if platform_support_was_verified "${arch}"; then
 		return
 	fi
 
 	if probe_platform_support "${arch}" "${image}"; then
-		PLATFORM_SUPPORT_VERIFIED["${arch}"]=1
+		mark_platform_support_verified "${arch}"
 		return
 	fi
 
 	if [[ -n "${binfmt_arch}" ]]; then
 		docker run --privileged --rm "${BINFMT_IMAGE}" --install "${binfmt_arch}" >/dev/null
 		if probe_platform_support "${arch}" "${image}"; then
-			PLATFORM_SUPPORT_VERIFIED["${arch}"]=1
+			mark_platform_support_verified "${arch}"
 			return
 		fi
 	fi
 
-	echo "Docker cannot execute ${ARCH_PLATFORM[${arch}]} containers. Install the required binfmt emulator or adjust PACKAGE_TEST_ARCHES." >&2
+	echo "Docker cannot execute ${platform} containers. Install the required binfmt emulator or adjust PACKAGE_TEST_ARCHES." >&2
 	exit 1
 }
 
@@ -343,9 +427,13 @@ run_deb_test() {
 	local channel="$2"
 	local arch="$3"
 	local image="$4"
-	local package_arch="${ARCH_DEB[${arch}]}"
+	local package_arch
 	local package_file
+	local platform
 	local tarball_file
+
+	package_arch="$(resolve_deb_arch "${arch}")"
+	platform="$(resolve_arch_platform "${arch}")"
 
 	package_file="$(artifact_path "resetusb-${ARTIFACT_VERSION_RESOLVED}-${distro}-${package_arch}.deb")"
 	tarball_file="$(artifact_path "resetusb-${ARTIFACT_VERSION_RESOLVED}-linux-${arch}.tar.gz")"
@@ -360,7 +448,7 @@ run_deb_test() {
 		local extracted_dir="$1"
 
 		docker run --rm \
-			--platform="${ARCH_PLATFORM[${arch}]}" \
+			--platform="${platform}" \
 			-v "${WORK_ROOT}":/work:ro \
 			-v "${DIST_DIR}":/dist:ro \
 			-v "${extracted_dir}":/tarball:ro \
@@ -406,9 +494,13 @@ run_rpm_test() {
 	local channel="$1"
 	local arch="$2"
 	local image="$3"
-	local rpm_arch="${ARCH_RPM[${arch}]}"
+	local rpm_arch
 	local package_file
+	local platform
 	local tarball_file
+
+	rpm_arch="$(resolve_rpm_arch "${arch}")"
+	platform="$(resolve_arch_platform "${arch}")"
 
 	package_file="$(artifact_path "resetusb-${ARTIFACT_VERSION_RESOLVED}-fedora-${rpm_arch}.rpm")"
 	tarball_file="$(artifact_path "resetusb-${ARTIFACT_VERSION_RESOLVED}-linux-${arch}.tar.gz")"
@@ -423,7 +515,7 @@ run_rpm_test() {
 		local extracted_dir="$1"
 
 		docker run --rm \
-			--platform="${ARCH_PLATFORM[${arch}]}" \
+			--platform="${platform}" \
 			-v "${WORK_ROOT}":/work:ro \
 			-v "${DIST_DIR}":/dist:ro \
 			-v "${extracted_dir}":/tarball:ro \
