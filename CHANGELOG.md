@@ -7,6 +7,7 @@
 - Install pinned upstream `actionlint` binaries in CI and local static-analysis bootstrap paths, and require `actionlint` `v1.7.10` or newer.
 - Enforce reviewable pull requests in CI by rejecting PRs over 20 changed files or 750 total changed lines, matching the repo policy for small, human-reviewable changes.
 - Tighten the release security contract check so CI must keep the snapshot digest validation in each bootstrap path and must keep the lint path that enforces the release guard itself.
+- Remove host-side Bash 4-only `mapfile` and associative-array dependencies from the release reproducibility and package-smoke scripts so local `make release-preflight` stays portable on older macOS Bash environments.
 
 ## v2.0.12
 
