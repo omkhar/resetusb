@@ -13,11 +13,14 @@ case "${profile}" in
 static-analysis)
 	packages=(
 		build-essential
+		ca-certificates
 		clang
 		clang-format
 		clang-tools
 		cppcheck
+		curl
 		libusb-1.0-0-dev
+		python3
 		shellcheck
 	)
 	;;
@@ -47,3 +50,7 @@ codeql-c-cpp)
 esac
 
 apt-get install -y --no-install-recommends "${packages[@]}"
+
+if [[ "${profile}" == "static-analysis" ]]; then
+	./scripts/install-actionlint.sh
+fi

@@ -1,0 +1,27 @@
+# resetusb Agent Control Plane
+
+This repository keeps its executable contract in `README.md`,
+`CONTRIBUTING.md`, `SECURITY.md`, `Makefile`, `scripts/`, and
+`.github/workflows/`. Use those files as the authority and do not invent a
+second policy layer here.
+
+Use `resetusb-change-gate` for every repository change.
+
+Core invariants:
+
+- Keep changes simple, focused, and easy to review.
+- When pushing work remotely, keep each PR narrow enough for a human reviewer to
+  reason about the scope, behavior, and risk quickly. Split unrelated work.
+- Preserve Linux-only assumptions and the existing safety messaging.
+- Edit only canonical control-plane sources, then rerender generated agent
+  files.
+- Before closeout, remove internal-only notes, local paths, usernames, scratch
+  artifacts, and repository detritus from public surfaces.
+
+Control-plane maintenance:
+
+- Canonical shared instructions live in `agent-control-plane/`.
+- Canonical shared skills live in `.agents/skills/`.
+- Claude mirrors are generated into `.claude/skills/`.
+- Regenerate with `python3 scripts/render-agent-control-plane.py`.
+- Verify with `make lint`.

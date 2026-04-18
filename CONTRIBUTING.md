@@ -21,7 +21,18 @@ sudo apt-get update
 sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck libusb-1.0-0-dev shellcheck
 ```
 
-If you lint GitHub Actions workflows locally, use `actionlint` `v1.7.10` or newer. `v1.7.8` predates GitHub's `artifact-metadata` permission support and reports a false positive on the release workflows in this repository.
+Install `actionlint` separately from the upstream release binaries and keep it at
+`v1.7.10` or newer. `v1.7.8` predates GitHub's `artifact-metadata` permission
+support and reports a false positive on the release workflows in this
+repository. `make lint` now requires `actionlint`.
+
+## Agent Control Plane
+
+- `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` are generated files. Do not hand-edit them.
+- Canonical shared skills live in `.agents/skills/`.
+- `.claude/skills/` is a generated mirror of the canonical shared skills.
+- After editing the canonical agent-control-plane source or shared skills, rerun the repository render script and then `make lint`.
+- Keep agent-facing content public-repo appropriate: remove internal-only notes, local paths, usernames, scratch artifacts, and other repository detritus before opening a PR.
 
 ## Before Opening a PR
 
@@ -55,7 +66,9 @@ make format
 - Include a short problem statement and rationale.
 - Include exact commands run and summarized results.
 - Add/adjust unit tests when behavior changes.
+- Keep PRs under 20 changed files and 750 total changed lines; split larger work before pushing.
 - Keep GitHub Actions references pinned to immutable commit SHAs.
+- If you change the canonical agent-control-plane source, include the regenerated `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and `.claude/skills/` updates in the same PR.
 - Document behavior changes in `README.md` and `SECURITY.md` when they affect users or operators.
 - Update `resetusb.8` when user-visible behavior, output, installation paths, or packaging contents change.
 
