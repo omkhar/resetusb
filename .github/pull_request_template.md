@@ -3,7 +3,7 @@
 <!-- What changed and why? -->
 
 <!-- Keep the PR narrow enough for a human reviewer to reason about quickly.
-     CI now rejects PRs over 20 changed files or 700 changed lines. Split
+     CI now rejects PRs over 20 changed files or 750 changed lines. Split
      unrelated or oversized work before pushing. -->
 
 ## Validation

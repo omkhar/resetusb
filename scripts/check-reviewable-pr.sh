@@ -3,7 +3,7 @@
 set -euo pipefail
 
 max_changed_files="${MAX_PR_CHANGED_FILES:-20}"
-max_total_lines="${MAX_PR_TOTAL_LINES:-700}"
+max_total_lines="${MAX_PR_TOTAL_LINES:-750}"
 changed_files="${PR_CHANGED_FILES:-}"
 additions="${PR_ADDITIONS:-}"
 deletions="${PR_DELETIONS:-}"

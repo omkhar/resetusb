@@ -66,7 +66,7 @@ make format
 - Include a short problem statement and rationale.
 - Include exact commands run and summarized results.
 - Add/adjust unit tests when behavior changes.
-- Keep PRs under 20 changed files and 700 total changed lines; split larger work before pushing.
+- Keep PRs under 20 changed files and 750 total changed lines; split larger work before pushing.
 - Keep GitHub Actions references pinned to immutable commit SHAs.
 - If you change the canonical agent-control-plane source, include the regenerated `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and `.claude/skills/` updates in the same PR.
 - Document behavior changes in `README.md` and `SECURITY.md` when they affect users or operators.
