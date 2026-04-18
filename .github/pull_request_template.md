@@ -2,6 +2,9 @@
 
 <!-- What changed and why? -->
 
+<!-- Keep the PR narrow enough for a human reviewer to reason about quickly.
+     Split unrelated work before pushing. -->
+
 ## Validation
 
 <!-- Paste exact commands + summarized output -->
@@ -19,3 +22,5 @@
 - [ ] I reviewed logs/output for sensitive data exposure.
 - [ ] I kept GitHub Actions references pinned to immutable commit SHAs.
 - [ ] I followed Linux kernel style in C source changes.
+- [ ] I kept this PR reviewable in size and scope, or I split unrelated work out.
+- [ ] I removed internal-only notes, local paths, usernames, scratch artifacts, and similar repo detritus.
