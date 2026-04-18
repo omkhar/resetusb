@@ -15,7 +15,7 @@
   ],
   "properties": {
     "format_version": {
-      "const": 2
+      "const": 3
     },
     "release_tag": {
       "type": "string",
@@ -32,7 +32,7 @@
     "builder_workflow": {
       "type": "string",
       "description": "Repository ownership is validated separately by scripts/validate-release-manifest.py, so the schema keeps this pattern repository-agnostic.",
-      "pattern": "^https://github\\.com/[^/]+/[^/]+/\\.github/workflows/release-builder\\.yml@refs/heads/main$"
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/\\.github/workflows/release-builder\\.yml@refs/tags/v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
     },
     "reproducible_inputs": {
       "type": "object",
@@ -42,6 +42,7 @@
         "builder_base_image",
         "debian_snapshot_url",
         "debian_snapshot_timestamp",
+        "debian_snapshot_inrelease_sha256",
         "debian_suite"
       ],
       "properties": {
@@ -60,6 +61,10 @@
         "debian_snapshot_timestamp": {
           "type": "string",
           "pattern": "^[0-9]{8}T[0-9]{6}Z$"
+        },
+        "debian_snapshot_inrelease_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         },
         "debian_suite": {
           "type": "string",

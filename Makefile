@@ -38,7 +38,7 @@ MAN8DIR ?= $(MANDIR)/man8
 UNAME_S := $(shell uname -s)
 
 .PHONY: all clean install uninstall test lint format check-format sanitize \
-	fuzz release-preflight
+	fuzz release-preflight check-release-contract
 
 ifeq ($(UNAME_S),Linux)
 EFFECTIVE_CFLAGS := $(CFLAGS) $(EXTRA_WARN_CFLAGS) $(HARDEN_CFLAGS)
@@ -113,6 +113,10 @@ lint:
 	else \
 		echo "No shell scripts to lint."; \
 	fi
+	./scripts/check-release-security-contract.sh
+
+check-release-contract:
+	./scripts/check-release-security-contract.sh
 
 clean:
 	rm -f resetusb $(UNIT_TEST_BIN) $(FUZZ_BIN)

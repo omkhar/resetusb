@@ -168,6 +168,9 @@ int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
 				(int)sizeof(product) - 1);
 			if (len > 0) {
 				size_t product_len = (size_t)len;
+				if (product_len >= sizeof(product)) {
+					product_len = sizeof(product) - 1;
+				}
 				product[product_len] = '\0';
 				sanitize_product_name(product);
 			} else {
