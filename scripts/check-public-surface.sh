@@ -26,7 +26,7 @@ disallowed_literals=(
 )
 
 disallowed_patterns=(
-	'[[:alnum:]_.%+-]+\.internal(\.[[:alnum:]-]+)+'
+	'[[:alnum:]_.-]+\.internal(\.[[:alnum:]-]+)*'
 )
 
 mapfile -d '' repo_paths < <(

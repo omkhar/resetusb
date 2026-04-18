@@ -80,6 +80,12 @@ require_literal_after \
 	".github/workflows/build-test.yml" \
 	"name: Run lint, format, and clang static analysis" \
 	"make lint"
+require_literal "Makefile" "actionlint"
+require_literal "Makefile" 'scripts/check-actionlint-version.py'
+require_literal "Makefile" "./scripts/check-public-surface.sh"
+require_literal "Makefile" "./scripts/check-release-security-contract.sh"
+require_literal "Makefile" 'scripts/render-agent-control-plane.py --check'
+require_literal "scripts/release-preflight.sh" "make lint"
 
 # shellcheck disable=SC2016
 require_literal ".github/workflows/release.yml" 'if [[ "${REF_TYPE}" != "tag" ]]; then'
