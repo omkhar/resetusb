@@ -20,7 +20,7 @@ defaults:
 permissions: {}
 
 env:
-  DEBIAN_BASE_IMAGE: debian:trixie@sha256:3352c2e13876c8a5c5873ef20870e1939e73cb9a3c1aeba5e3e72172a85ce9ed
+  DEBIAN_BASE_IMAGE: debian:trixie@sha256:35b8ff74ead4880f22090b617372daff0ccae742eb5674455d542bef71ef1999
   DEBIAN_SNAPSHOT_URL: http://snapshot.debian.org/archive/debian
   DEBIAN_SNAPSHOT_TIMESTAMP: 20260317T082636Z
   DEBIAN_SNAPSHOT_INRELEASE_SHA256: 7592e4ccb4658a58bfe485d3356b3c983bf8ccff7fca1f6091e4d4296284ed18
@@ -31,7 +31,7 @@ jobs:
     name: analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     container:
-      image: debian:trixie@sha256:3352c2e13876c8a5c5873ef20870e1939e73cb9a3c1aeba5e3e72172a85ce9ed
+      image: debian:trixie@sha256:35b8ff74ead4880f22090b617372daff0ccae742eb5674455d542bef71ef1999
     permissions:
       actions: read # Resolve workflow metadata when analyzing GitHub Actions definitions.
       contents: read # Check out repository contents for CodeQL analysis.
