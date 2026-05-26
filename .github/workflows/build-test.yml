@@ -19,10 +19,10 @@ permissions:
   contents: read
 
 env:
-  DEBIAN_BASE_IMAGE: debian:trixie@sha256:e2d08da6f42ef4b09b165d55528a12727aeed8240dc9edf888e3ec07e10ef9da
+  DEBIAN_BASE_IMAGE: debian:trixie@sha256:dd0b6c66d785d68a80a3f346db5bd1aff854ba013d71a05f0fd31aee8cc35382
   DEBIAN_SNAPSHOT_URL: http://snapshot.debian.org/archive/debian
-  DEBIAN_SNAPSHOT_TIMESTAMP: 20260317T082636Z
-  DEBIAN_SNAPSHOT_INRELEASE_SHA256: 7592e4ccb4658a58bfe485d3356b3c983bf8ccff7fca1f6091e4d4296284ed18
+  DEBIAN_SNAPSHOT_TIMESTAMP: 20260518T000000Z
+  DEBIAN_SNAPSHOT_INRELEASE_SHA256: 71f2c66148e9e10b4a0c100985b28734704f61efca350519b09bb3a0aad4c771
   DEBIAN_SUITE: trixie
 
 jobs:
@@ -87,7 +87,7 @@ jobs:
     name: static-analysis
     runs-on: ubuntu-latest
     container:
-      image: debian:trixie@sha256:e2d08da6f42ef4b09b165d55528a12727aeed8240dc9edf888e3ec07e10ef9da
+      image: debian:trixie@sha256:dd0b6c66d785d68a80a3f346db5bd1aff854ba013d71a05f0fd31aee8cc35382
     steps:
       - name: Bootstrap pinned CI tooling
         run: |
@@ -135,7 +135,7 @@ jobs:
     name: unit-tests (${{ matrix.cc }})
     runs-on: ubuntu-latest
     container:
-      image: debian:trixie@sha256:e2d08da6f42ef4b09b165d55528a12727aeed8240dc9edf888e3ec07e10ef9da
+      image: debian:trixie@sha256:dd0b6c66d785d68a80a3f346db5bd1aff854ba013d71a05f0fd31aee8cc35382
     strategy:
       fail-fast: false
       matrix:
@@ -198,7 +198,7 @@ jobs:
     name: sanitize
     runs-on: ubuntu-latest
     container:
-      image: debian:trixie@sha256:e2d08da6f42ef4b09b165d55528a12727aeed8240dc9edf888e3ec07e10ef9da
+      image: debian:trixie@sha256:dd0b6c66d785d68a80a3f346db5bd1aff854ba013d71a05f0fd31aee8cc35382
     steps:
       - name: Bootstrap pinned CI tooling
         run: |
