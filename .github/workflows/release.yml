@@ -94,13 +94,13 @@ jobs:
     permissions:
       contents: read # Check out builder inputs and tagged release source.
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ needs.release-context.outputs.builder_sha }}
           fetch-depth: 0
           path: builder
           persist-credentials: false
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ needs.release-context.outputs.source_ref }}
           fetch-depth: 0
@@ -185,7 +185,7 @@ jobs:
       actions: read # Download staged workflow artifacts before publication.
       contents: write # Create and update the GitHub release with generated artifacts.
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ needs.release-context.outputs.builder_sha }}
           fetch-depth: 0
