@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.0.14
+
+- Refresh the pinned Debian `trixie` base image used by CI containers and the
+  trusted release-builder lock.
+- Bump the pinned GitHub Actions and workflow toolchain dependencies used by
+  repository validation, including checkout, CodeQL/upload-sarif,
+  dependency-review, setup-go, setup-qemu, and zizmor.
+
 ## v2.0.13
 
 - Add a repo-owned portable agent control plane with canonical shared instructions, generated `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`, and a generated Claude skill mirror so Codex, Claude, and Gemini consume the same project invariants.
