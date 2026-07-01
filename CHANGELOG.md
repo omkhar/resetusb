@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.0.15
+
+- Refresh the pinned `docker/setup-qemu-action` workflow dependency used by CI,
+  nightly release preflight, and release publication.
+
 ## v2.0.14
 
 - Refresh the pinned Debian `trixie` base image used by CI containers and the
