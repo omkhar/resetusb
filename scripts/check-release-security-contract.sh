@@ -87,21 +87,7 @@ require_literal "Makefile" "./scripts/check-release-security-contract.sh"
 require_literal "Makefile" 'scripts/render-agent-control-plane.py --check'
 require_literal "scripts/release-preflight.sh" "make lint"
 
-codeql_ref_count="$(
-	sed -nE \
-		's#.*uses: github/codeql-action/(init|analyze)@([0-9a-f]{40}).*#\2#p' \
-		.github/workflows/codeql.yml | wc -l | tr -d ' '
-)"
-codeql_unique_ref_count="$(
-	sed -nE \
-		's#.*uses: github/codeql-action/(init|analyze)@([0-9a-f]{40}).*#\2#p' \
-		.github/workflows/codeql.yml | sort -u | wc -l | tr -d ' '
-)"
-
-if [[ "${codeql_ref_count}" != 2 || "${codeql_unique_ref_count}" != 1 ]]; then
-	echo "CodeQL init and analyze must use the same immutable revision" >&2
-	exit 1
-fi
+"${SCRIPT_DIR}/check-codeql-action-pair.sh" ".github/workflows/codeql.yml"
 
 # shellcheck disable=SC2016
 require_literal ".github/workflows/release.yml" 'if [[ "${REF_TYPE}" != "tag" ]]; then'
