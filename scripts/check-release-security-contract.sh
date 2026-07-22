@@ -238,6 +238,8 @@ require_literal "Makefile" "./scripts/check-release-security-contract.sh"
 require_literal "Makefile" 'scripts/render-agent-control-plane.py --check'
 require_literal "scripts/release-preflight.sh" "make lint"
 
+"${SCRIPT_DIR}/check-codeql-action-pair.sh" ".github/workflows/codeql.yml"
+
 # shellcheck disable=SC2016
 require_literal ".github/workflows/release.yml" 'if [[ "${REF_TYPE}" != "tag" ]]; then'
 # shellcheck disable=SC2016
