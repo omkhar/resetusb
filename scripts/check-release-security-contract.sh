@@ -52,6 +52,22 @@ cd "${REPO_ROOT}"
 
 require_literal "docker/release-builder.lock" "DEBIAN_SNAPSHOT_INRELEASE_SHA256="
 
+# shellcheck disable=SC1091
+source "docker/release-builder.lock"
+
+for path in \
+	".github/workflows/build-test.yml" \
+	".github/workflows/codeql.yml" \
+	"docker/release-builder.Dockerfile"; do
+	base_image_refs="$(
+		grep -Eo 'debian:trixie@sha256:[0-9a-f]{64}' "${path}" | sort -u
+	)"
+	if [[ "${base_image_refs}" != "${DEBIAN_BASE_IMAGE}" ]]; then
+		echo "Debian base image references in ${path} must match docker/release-builder.lock" >&2
+		exit 1
+	fi
+done
+
 # shellcheck disable=SC2016
 snapshot_sha_check='echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  ${snapshot_inrelease}" | sha256sum --check --strict'
 
