@@ -16,7 +16,7 @@ permissions: {}
 jobs:
   analysis:
     name: scorecard-analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read # Check out repository contents for Scorecard analysis.
       security-events: write # Upload the generated SARIF results to code scanning.

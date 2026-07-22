@@ -84,7 +84,7 @@ done
 
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 PREFLIGHT_IMAGE="${PREFLIGHT_IMAGE:-resetusb-release-preflight:preflight}"
-GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9}"
+GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f}"
 RELEASE_PLATFORM="${RELEASE_PLATFORM:-linux/amd64}"
 PREFLIGHT_PLATFORM="${PREFLIGHT_PLATFORM:-$(resolve_prefight_platform)}"
 PREFLIGHT_BUILDER_IMAGE="${PREFLIGHT_BUILDER_IMAGE:-resetusb-release-builder:preflight-native}"
@@ -95,6 +95,25 @@ validate_image_ref "GITLEAKS_IMAGE" "${GITLEAKS_IMAGE}"
 validate_image_ref "PREFLIGHT_BUILDER_IMAGE" "${PREFLIGHT_BUILDER_IMAGE}"
 
 require_cmd docker
+
+git_common_dir="$(
+	git -C "${SOURCE_ROOT}" rev-parse --path-format=absolute --git-common-dir
+)"
+if [[ ! -d "${git_common_dir}" || "${git_common_dir}" == "/" ]]; then
+	echo "Unsafe or missing Git common directory: ${git_common_dir}" >&2
+	exit 1
+fi
+
+preflight_docker_args=(
+	--rm
+	--platform="${PREFLIGHT_PLATFORM}"
+	--user "${CONTAINER_UID_GID}"
+	-v "${SOURCE_ROOT}:/source"
+	-w /source
+)
+if [[ -f "${SOURCE_ROOT}/.git" ]]; then
+	preflight_docker_args+=(-v "${git_common_dir}:${git_common_dir}:ro")
+fi
 
 tmp_dockerfile="$(mktemp)"
 cleanup() {
@@ -145,13 +164,22 @@ docker build --platform="${PREFLIGHT_PLATFORM}" \
 	-f "${tmp_dockerfile}" -t "${PREFLIGHT_IMAGE}" "${BUILDER_ROOT}"
 
 echo "==> Running Linux release preflight"
-docker run --rm --platform="${PREFLIGHT_PLATFORM}" \
-	--user "${CONTAINER_UID_GID}" \
-	-v "${SOURCE_ROOT}":/source \
-	-w /source \
+docker run \
+	"${preflight_docker_args[@]}" \
 	"${PREFLIGHT_IMAGE}" \
 	bash -lc '
 		set -euo pipefail
+		commit_count="$(git -C /source rev-list --count --all)"
+		case "${commit_count}" in
+			""|*[!0-9]*)
+				echo "Release preflight could not count repository commits" >&2
+				exit 1
+				;;
+		esac
+		if [ "${commit_count}" -eq 0 ]; then
+			echo "Release preflight found no repository commits" >&2
+			exit 1
+		fi
 		make clean
 		make CC=gcc
 		make CC=gcc test
@@ -173,8 +201,29 @@ SOURCE_ROOT="${SOURCE_ROOT}" \
 	"${BUILDER_ROOT}/scripts/run-package-smoke.sh"
 
 echo "==> Running gitleaks history scan"
-docker run --rm \
-	-v "${SOURCE_ROOT}":/repo:ro \
-	-w /repo \
+gitleaks_docker_args=(
+	--rm
+	-v "${SOURCE_ROOT}:/repo:ro"
+	-w /repo
+	--entrypoint /bin/sh
+)
+if [[ -f "${SOURCE_ROOT}/.git" ]]; then
+	gitleaks_docker_args+=(-v "${git_common_dir}:${git_common_dir}:ro")
+fi
+docker run \
+	"${gitleaks_docker_args[@]}" \
 	"${GITLEAKS_IMAGE}" \
-	git /repo --log-opts=--all --no-banner --redact --exit-code 1
+	-ec '
+		commit_count="$(git -C /repo rev-list --count --all)"
+		case "${commit_count}" in
+			""|*[!0-9]*)
+				echo "Gitleaks could not count repository commits" >&2
+				exit 1
+				;;
+		esac
+		if [ "${commit_count}" -eq 0 ]; then
+			echo "Gitleaks found no repository commits to scan" >&2
+			exit 1
+		fi
+		exec gitleaks git /repo --log-opts=--all --no-banner --redact --exit-code 1
+	'

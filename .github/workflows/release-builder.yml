@@ -29,7 +29,7 @@ permissions: {}
 jobs:
   release-build:
     name: release-build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       primary_artifacts: ${{ steps.manifest.outputs.primary_artifacts }}
     permissions:
@@ -120,8 +120,8 @@ jobs:
       - name: Install cosign
         run: |
           set -euo pipefail
-          version="v3.0.5"
-          expected_sha256="db15cc99e6e4837daabab023742aaddc3841ce57f193d11b7c3e06c8003642b2"
+          version="v3.1.2"
+          expected_sha256="f7622ed3cf22e55e1ae6377c080979ff77a22da9981c11df222a2e444991e7cf"
           install_dir="${RUNNER_TEMP}/bin"
 
           mkdir -p "$install_dir"
@@ -168,7 +168,7 @@ jobs:
         id: syft
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
-          syft-version: v1.42.3
+          syft-version: v1.49.0
       - name: Generate SPDX SBOMs
         env:
           SYFT_CMD: ${{ steps.syft.outputs.cmd }}
@@ -369,7 +369,7 @@ jobs:
   release-attest:
     name: release-attest (${{ matrix.artifact }})
     needs: release-build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

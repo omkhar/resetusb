@@ -12,7 +12,7 @@ concurrency:
 jobs:
   release-context:
     name: release-context
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read # Inspect existing releases before building immutable tags.
     outputs:
@@ -90,7 +90,7 @@ jobs:
   release-preflight:
     name: release-preflight
     needs: release-context
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read # Check out builder inputs and tagged release source.
     steps:
@@ -180,7 +180,7 @@ jobs:
     needs:
       - release-context
       - release-build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: read # Download staged workflow artifacts before publication.
       contents: write # Create and update the GitHub release with generated artifacts.
@@ -199,8 +199,8 @@ jobs:
       - name: Install cosign
         run: |
           set -euo pipefail
-          version="v3.0.5"
-          expected_sha256="db15cc99e6e4837daabab023742aaddc3841ce57f193d11b7c3e06c8003642b2"
+          version="v3.1.2"
+          expected_sha256="f7622ed3cf22e55e1ae6377c080979ff77a22da9981c11df222a2e444991e7cf"
           install_dir="${RUNNER_TEMP}/bin"
 
           mkdir -p "$install_dir"

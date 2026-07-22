@@ -449,6 +449,7 @@ run_deb_test() {
 
 		docker run --rm \
 			--platform="${platform}" \
+			-e RESETUSB_PACKAGE_TEST_TARGET="${distro}/${channel}/${arch}" \
 			-v "${WORK_ROOT}":/work:ro \
 			-v "${DIST_DIR}":/dist:ro \
 			-v "${extracted_dir}":/tarball:ro \
@@ -457,7 +458,27 @@ run_deb_test() {
 			sh -euxc '
 				export DEBIAN_FRONTEND=noninteractive
 				apt-get update
-				apt-get install -y --no-install-recommends ca-certificates passwd
+				if [ "$RESETUSB_PACKAGE_TEST_TARGET" = "ubuntu/unstable/armv7" ]; then
+					gnu_coreutils_root=/tmp/resetusb-gnu-coreutils
+					mkdir -p "$gnu_coreutils_root/archive" "$gnu_coreutils_root/root"
+					chown _apt "$gnu_coreutils_root/archive"
+					(
+						cd "$gnu_coreutils_root/archive"
+						apt-get download gnu-coreutils
+					)
+					set -- "$gnu_coreutils_root"/archive/gnu-coreutils_*.deb
+					test "$#" -eq 1
+					test -f "$1"
+					dpkg-deb -x "$1" "$gnu_coreutils_root/root"
+					test "$(readlink /usr/bin/rm)" = "../lib/cargo/bin/coreutils/rm"
+					ln -sfn "$gnu_coreutils_root/root/usr/bin/gnurm" /usr/bin/rm
+					rm --version | grep -Fq "rm (GNU coreutils)"
+					mkdir "$gnu_coreutils_root/remove-check"
+					: >"$gnu_coreutils_root/remove-check/file"
+					rm -rf "$gnu_coreutils_root/remove-check"
+					test ! -e "$gnu_coreutils_root/remove-check"
+				fi
+				apt-get install -y --no-install-recommends passwd
 				dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Package: resetusb"
 				dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
 				dpkg-deb -c /dist/'"$(basename "${package_file}")"' | grep -Eq "usr/share/man/man8/resetusb\\.8(\\.gz)?$"

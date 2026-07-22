@@ -19,17 +19,17 @@ permissions:
   contents: read
 
 env:
-  DEBIAN_BASE_IMAGE: debian:trixie@sha256:d07d1b51c39f51188e60be9b64e6bf769fa94e187f092bc32b91305cfa34ba5a
+  DEBIAN_BASE_IMAGE: debian:trixie@sha256:fac46bff2e02f51425b6e33b0e1169f55dfb053d83511ca28aa50c09fd5ed7a4
   DEBIAN_SNAPSHOT_URL: http://snapshot.debian.org/archive/debian
-  DEBIAN_SNAPSHOT_TIMESTAMP: 20260518T000000Z
-  DEBIAN_SNAPSHOT_INRELEASE_SHA256: 71f2c66148e9e10b4a0c100985b28734704f61efca350519b09bb3a0aad4c771
+  DEBIAN_SNAPSHOT_TIMESTAMP: 20260721T000000Z
+  DEBIAN_SNAPSHOT_INRELEASE_SHA256: 98b25b5cd185c59d34aa6e4c3e9b5b8f01bbe9d104fe2dcfbcd30dc0a14a59ed
   DEBIAN_SUITE: trixie
 
 jobs:
   pr-reviewability:
     name: pr-reviewability
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -44,7 +44,7 @@ jobs:
 
   detect-package-changes:
     name: detect-package-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       package_smoke: ${{ steps.filter.outputs.package_smoke }}
     steps:
@@ -85,9 +85,9 @@ jobs:
 
   static-analysis:
     name: static-analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
-      image: debian:trixie@sha256:d07d1b51c39f51188e60be9b64e6bf769fa94e187f092bc32b91305cfa34ba5a
+      image: debian:trixie@sha256:fac46bff2e02f51425b6e33b0e1169f55dfb053d83511ca28aa50c09fd5ed7a4
     steps:
       - name: Bootstrap pinned CI tooling
         run: |
@@ -133,9 +133,9 @@ jobs:
 
   unit-tests:
     name: unit-tests (${{ matrix.cc }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
-      image: debian:trixie@sha256:d07d1b51c39f51188e60be9b64e6bf769fa94e187f092bc32b91305cfa34ba5a
+      image: debian:trixie@sha256:fac46bff2e02f51425b6e33b0e1169f55dfb053d83511ca28aa50c09fd5ed7a4
     strategy:
       fail-fast: false
       matrix:
@@ -196,9 +196,9 @@ jobs:
 
   sanitize:
     name: sanitize
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
-      image: debian:trixie@sha256:d07d1b51c39f51188e60be9b64e6bf769fa94e187f092bc32b91305cfa34ba5a
+      image: debian:trixie@sha256:fac46bff2e02f51425b6e33b0e1169f55dfb053d83511ca28aa50c09fd5ed7a4
     steps:
       - name: Bootstrap pinned CI tooling
         run: |
@@ -245,7 +245,7 @@ jobs:
     name: package-smoke
     needs: detect-package-changes
     if: needs.detect-package-changes.outputs.package_smoke == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:

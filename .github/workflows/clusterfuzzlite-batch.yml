@@ -14,7 +14,7 @@ permissions: {}
 jobs:
   batch-fuzzing:
     name: batch-fuzzing
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read # Check out the repository and read fuzz targets from source.
     steps:
