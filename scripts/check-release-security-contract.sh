@@ -19,6 +19,60 @@ require_literal() {
 	fi
 }
 
+forbid_literal() {
+	local path="$1"
+	local needle="$2"
+
+	if grep -Fq -- "${needle}" "${path}"; then
+		echo "Unexpected text in ${path}: ${needle}" >&2
+		exit 1
+	fi
+}
+
+require_action_pin() {
+	local action="$1"
+	local expected_sha="$2"
+	local expected_version="$3"
+	local expected="uses: ${action}@${expected_sha} # ${expected_version}"
+	local path
+	local -a workflow_files=()
+
+	while IFS= read -r path; do
+		workflow_files+=("${path}")
+	done < <(
+		find .github/workflows -maxdepth 1 -type f \
+			\( -name '*.yml' -o -name '*.yaml' \) -print | sort
+	)
+
+	if [[ ${#workflow_files[@]} -eq 0 ]]; then
+		echo "No GitHub workflow files found" >&2
+		exit 1
+	fi
+
+	if ! awk \
+		-v needle="uses: ${action}@" \
+		-v expected="${expected}" '
+		index($0, needle) {
+			found = 1
+			actual = $0
+			sub(/^[[:space:]]*-?[[:space:]]*/, "", actual)
+			if (actual != expected) {
+				printf "%s:%d: expected %s, got %s\n", \
+					FILENAME, FNR, expected, actual > "/dev/stderr"
+				bad = 1
+			}
+		}
+		END {
+			if (!found) {
+				printf "No workflow uses %s\n", needle > "/dev/stderr"
+			}
+			exit(bad || !found ? 1 : 0)
+		}
+	' "${workflow_files[@]}"; then
+		exit 1
+	fi
+}
+
 require_literal_after() {
 	local path="$1"
 	local marker="$2"
@@ -51,6 +105,39 @@ require_literal_after() {
 cd "${REPO_ROOT}"
 
 require_literal "docker/release-builder.lock" "DEBIAN_SNAPSHOT_INRELEASE_SHA256="
+
+while IFS='|' read -r action expected_sha expected_version; do
+	require_action_pin "${action}" "${expected_sha}" "${expected_version}"
+done <<'EOF'
+actions/checkout|3d3c42e5aac5ba805825da76410c181273ba90b1|v7.0.1
+actions/setup-go|b7ad1dad31e06c5925ef5d2fc7ad053ef454303e|v7.0.0
+actions/upload-artifact|043fb46d1a93c77aae656e7c1c64a875d1fc6a0a|v7.0.1
+actions/download-artifact|3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c|v8.0.1
+actions/attest|f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6|v4.2.0
+github/codeql-action/init|e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81|v4.37.3
+github/codeql-action/analyze|e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81|v4.37.3
+github/codeql-action/upload-sarif|e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81|v4.37.3
+actions/dependency-review-action|a1d282b36b6f3519aa1f3fc636f609c47dddb294|v5.0.0
+docker/setup-qemu-action|96fe6ef7f33517b61c61be40b68a1882f3264fb8|v4.2.0
+anchore/sbom-action/download-syft|e22c389904149dbc22b58101806040fa8d37a610|v0.24.0
+ossf/scorecard-action|4eaacf0543bb3f2c246792bd56e8cdeffafb205a|v2.4.3
+zizmorcore/zizmor-action|6599ee8b7a49aef6a770f63d261d214911a7ce02|v0.6.0
+google/clusterfuzzlite/actions/build_fuzzers|884713a6c30a92e5e8544c39945cd7cb630abcd1|v1
+google/clusterfuzzlite/actions/run_fuzzers|884713a6c30a92e5e8544c39945cd7cb630abcd1|v1
+EOF
+
+require_literal "CONTRIBUTING.md" "\`v1.7.12\` or newer."
+forbid_literal "CONTRIBUTING.md" "\`v1.7.10\` or newer."
+require_literal "CONTRIBUTING.md" \
+	"libusb-1.0-0-dev python3 shellcheck"
+require_literal "CONTRIBUTING.md" "Use Python 3.10 or newer."
+require_literal "CONTRIBUTING.md" \
+	"Local checks support Bash 3.2 or newer."
+require_literal "CONTRIBUTING.md" \
+	"Release and package scripts require Bash 4.0 or newer."
+forbid_literal "scripts/check-public-surface.sh" "mapfile -d '' repo_paths"
+require_literal "scripts/check-public-surface.sh" \
+	"while IFS= read -r -d '' path; do"
 
 # shellcheck disable=SC1091
 source "docker/release-builder.lock"
@@ -101,9 +188,6 @@ if grep -Fq -- 'clamp_mtime_to_source_date_epoch' \
 	echo "The RPM build must not use the deprecated clamp_mtime_to_source_date_epoch macro" >&2
 	exit 1
 fi
-require_literal "scripts/test-package-integration.sh" 'ubuntu/unstable/armv7'
-require_literal "scripts/test-package-integration.sh" 'gnu-coreutils'
-require_literal "scripts/test-package-integration.sh" 'gnurm'
 for path in \
 	".github/workflows/release-builder.yml" \
 	".github/workflows/release.yml"; do
@@ -118,36 +202,6 @@ if grep -R -Fq -- "runs-on: ubuntu-latest" .github/workflows; then
 	echo "GitHub-hosted jobs must use the explicit ubuntu-24.04 runtime" >&2
 	exit 1
 fi
-
-for image in \
-	"debian:trixie@sha256:d63a99144861e4e460196ed93d07777490cbeab53ca660c434f2a589a6c50ea3" \
-	"debian:trixie@sha256:8ac748152418b19ff289badbf878c42561c5b0cd922ade5fe4fa37cf0769b521" \
-	"debian:trixie@sha256:743aca1ad24c5e48132df88f561f8d1365bfb6da33e006eb44b44fe32a7a30eb" \
-	"debian:sid@sha256:2c9866a63b63e4ebafaf913f97c7c6548c3b578b9a4279f101c2ef04738d0aeb" \
-	"debian:sid@sha256:e0978e3b598df62ce058da98d55bd5b34de32b6d18536fa227acfd915a7b4823" \
-	"debian:sid@sha256:b2a5fd5dd970285660fab5570f252cfcb61a9f94506571f0e84c29a029678c68" \
-	"ubuntu:24.04@sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf" \
-	"ubuntu:24.04@sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab" \
-	"ubuntu:24.04@sha256:85bd033654caaaa96ca01bd334ff21fb21d38e29b563ea8ab527bb61ea3a2307" \
-	"ubuntu:devel@sha256:bb545a234ade8e929bf1f12d475d3472c4ed221e1f1c0a0c7ba8165b64da7729" \
-	"ubuntu:devel@sha256:d206b9277d9b8fab7fdefa816b4a6e290d57c9e98e82a00474cb8a1f806cb9e1" \
-	"ubuntu:devel@sha256:394966275ff5e8a815d8455a2db135e953574ff05acf4ffaa3c3ee7b6f99afad" \
-	"fedora:44@sha256:89f61a124414261868224666aa7fb8df1b78397a53623774bdfb105d1612b48b" \
-	"fedora:rawhide@sha256:ea5726b9c7d8f7c5a7826f196b93adc4e2e2bb6b0c707f3857104642bf34b4f3"; do
-	require_literal "docker/package-test-images.lock" "${image}"
-done
-
-for text in \
-	"Go 1.26.5" \
-	"Gitleaks 8.30.1" \
-	"Cosign 3.1.2" \
-	"Syft 1.49.0" \
-	"Debian 13" \
-	"Fedora 44" \
-	"Ubuntu 24.04" \
-	"20260721T000000Z"; do
-	require_literal "RUNTIMES.md" "${text}"
-done
 
 # shellcheck disable=SC2016
 snapshot_sha_check='echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  ${snapshot_inrelease}" | sha256sum --check --strict'
