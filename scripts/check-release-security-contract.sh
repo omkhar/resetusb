@@ -203,6 +203,63 @@ if grep -R -Fq -- "runs-on: ubuntu-latest" .github/workflows; then
 	exit 1
 fi
 
+require_literal "scripts/test-package-integration.sh" \
+	"tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0"
+forbid_literal "scripts/test-package-integration.sh" \
+	"tonistiigi/binfmt@sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3"
+require_literal ".clusterfuzzlite/Dockerfile" \
+	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:8aa36c8f128e4afa83ae566f413e944094a4923969b26b5cd85be6803d5eacf3"
+forbid_literal ".clusterfuzzlite/Dockerfile" \
+	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:cc6982a6ce8b02c80a2acabbcfe766e5e7200988ff0424b0d4963232c3b41901"
+
+require_literal "scripts/test-package-integration.sh" \
+	"RESETUSB_PACKAGE_TEST_TARGET=\"\${distro}/\${channel}/\${arch}\""
+require_literal "scripts/test-package-integration.sh" \
+	'ubuntu/unstable/armv7'
+require_literal "scripts/test-package-integration.sh" 'gnu-coreutils'
+require_literal "scripts/test-package-integration.sh" 'gnurm'
+
+while IFS= read -r image; do
+	require_literal "docker/package-test-images.lock" "${image}"
+done <<'EOF'
+debian:trixie@sha256:d63a99144861e4e460196ed93d07777490cbeab53ca660c434f2a589a6c50ea3
+debian:trixie@sha256:8ac748152418b19ff289badbf878c42561c5b0cd922ade5fe4fa37cf0769b521
+debian:trixie@sha256:743aca1ad24c5e48132df88f561f8d1365bfb6da33e006eb44b44fe32a7a30eb
+debian:sid@sha256:2c9866a63b63e4ebafaf913f97c7c6548c3b578b9a4279f101c2ef04738d0aeb
+debian:sid@sha256:e0978e3b598df62ce058da98d55bd5b34de32b6d18536fa227acfd915a7b4823
+debian:sid@sha256:b2a5fd5dd970285660fab5570f252cfcb61a9f94506571f0e84c29a029678c68
+ubuntu:24.04@sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf
+ubuntu:24.04@sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab
+ubuntu:24.04@sha256:85bd033654caaaa96ca01bd334ff21fb21d38e29b563ea8ab527bb61ea3a2307
+ubuntu:devel@sha256:bb545a234ade8e929bf1f12d475d3472c4ed221e1f1c0a0c7ba8165b64da7729
+ubuntu:devel@sha256:d206b9277d9b8fab7fdefa816b4a6e290d57c9e98e82a00474cb8a1f806cb9e1
+ubuntu:devel@sha256:394966275ff5e8a815d8455a2db135e953574ff05acf4ffaa3c3ee7b6f99afad
+fedora:44@sha256:89f61a124414261868224666aa7fb8df1b78397a53623774bdfb105d1612b48b
+fedora:rawhide@sha256:ea5726b9c7d8f7c5a7826f196b93adc4e2e2bb6b0c707f3857104642bf34b4f3
+EOF
+
+while IFS= read -r runtime_statement; do
+	require_literal "RUNTIMES.md" "${runtime_statement}"
+done <<'EOF'
+This document uses ASD-STE100 Simplified Technical English.
+The program runs only on Linux.
+The program must run as root.
+Local checks support Bash 3.2 or newer.
+Release and package scripts require Bash 4.0 or newer.
+Repository checks require Python 3.10 or newer.
+Repository security automation uses Go 1.26.5.
+GitHub-hosted jobs use Ubuntu 24.04.
+`make release-preflight` needs the Docker command and a Docker daemon.
+The preflight accepts only an `amd64` or `arm64` Docker server.
+The package tests use QEMU and `binfmt` for non-native containers.
+The `binfmt` setup needs a privileged Docker container.
+The package tests need network access to distribution package repositories.
+Stable package tests use Debian 13, Ubuntu 24.04, and Fedora 44.
+Unstable package tests use Debian `sid`, Ubuntu `devel`, and Fedora `rawhide`.
+Debian and Ubuntu package tests use `amd64`, `arm64`, and `armv7` containers.
+Fedora package tests use only an `amd64` container.
+EOF
+
 # shellcheck disable=SC2016
 snapshot_sha_check='echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  ${snapshot_inrelease}" | sha256sum --check --strict'
 
