@@ -58,4 +58,4 @@ This document uses ASD-STE100 Simplified Technical English.
 - The install target installs the executable and the manual page. It does not install `resetusb.h`.
 - Generic archives need the system `libusb-1.0` shared library.
 
-See [RUNTIMES.md](RUNTIMES.md) for runtime requirements.
+See [RUNTIMES.md](RUNTIMES.md) for runtime requirements. See [FUNCTIONS.md](FUNCTIONS.md) for the function inventory.
