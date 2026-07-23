@@ -85,6 +85,17 @@ wrap_fixture() {
 	} >"${workflow}"
 }
 
+fixture_counter=0
+expect_steps() {
+	local expectation="$1"
+	local name="$2"
+	shift 2
+	local path="${TMP_DIR}/case-${fixture_counter}.yml"
+	fixture_counter=$((fixture_counter + 1))
+	printf '%s\n' "$@" >"${path}"
+	"expect_${expectation}" "${name}" "${path}"
+}
+
 valid="${TMP_DIR}/valid.yml"
 printf '%s\n' \
 	"uses: github/codeql-action/init@${sha_one}" \
@@ -105,19 +116,15 @@ if ! "${shadow_checker_dir}/check-codeql-action-pair.sh" "${valid}.workflow.yml"
 	exit 1
 fi
 
-valid_comment="${TMP_DIR}/valid-comment.yml"
-printf '%s\n' \
+expect_steps pass "an immutable revision with a YAML comment" \
 	"uses: github/codeql-action/init@${sha_one} # pinned init" \
-	"uses: github/codeql-action/analyze@${sha_one} # pinned analyze" >"${valid_comment}"
-expect_pass "an immutable revision with a YAML comment" "${valid_comment}"
+	"uses: github/codeql-action/analyze@${sha_one} # pinned analyze"
 
-valid_uses_text="${TMP_DIR}/valid-uses-text.yml"
-printf '%s\n' \
+expect_steps pass "ordinary text that contains the word uses" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	'run: echo "This workflow uses immutable action revisions."' \
 	'# This workflow uses immutable action revisions.' \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${valid_uses_text}"
-expect_pass "ordinary text that contains the word uses" "${valid_uses_text}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
 valid_shell_escape="${TMP_DIR}/valid-shell-escape.yml"
 printf '%s\n' \
@@ -358,207 +365,147 @@ printf '%s\n' \
 	fi
 )
 
-missing="${TMP_DIR}/missing.yml"
-printf '%s\n' \
-	"uses: github/codeql-action/init@${sha_one}" >"${missing}"
-expect_fail "a missing analyze phase" "${missing}"
+expect_steps fail "a missing analyze phase" \
+	"uses: github/codeql-action/init@${sha_one}"
 
-missing_init="${TMP_DIR}/missing-init.yml"
-printf '%s\n' \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${missing_init}"
-expect_fail "a missing init phase" "${missing_init}"
+expect_steps fail "a missing init phase" \
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-conditional_init="${TMP_DIR}/conditional-init.yml"
-printf '%s\n' \
+expect_steps fail "a conditional CodeQL init phase" \
 	"- if: github.repository == 'never/matches'" \
 	"  uses: github/codeql-action/init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${conditional_init}"
-expect_fail "a conditional CodeQL init phase" "${conditional_init}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-conditional_analyze="${TMP_DIR}/conditional-analyze.yml"
-printf '%s\n' \
+expect_steps fail "a conditional CodeQL analyze phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- if: github.repository == 'never/matches'" \
-	"  uses: github/codeql-action/analyze@${sha_one}" >"${conditional_analyze}"
-expect_fail "a conditional CodeQL analyze phase" "${conditional_analyze}"
+	"  uses: github/codeql-action/analyze@${sha_one}"
 
-tolerated_init="${TMP_DIR}/tolerated-init.yml"
-printf '%s\n' \
+expect_steps fail "a tolerated CodeQL init failure" \
 	'- continue-on-error: true' \
 	"  uses: github/codeql-action/init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${tolerated_init}"
-expect_fail "a tolerated CodeQL init failure" "${tolerated_init}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-tolerated_analyze="${TMP_DIR}/tolerated-analyze.yml"
-printf '%s\n' \
+expect_steps fail "a tolerated CodeQL analyze failure" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	'- continue-on-error: true' \
-	"  uses: github/codeql-action/analyze@${sha_one}" >"${tolerated_analyze}"
-expect_fail "a tolerated CodeQL analyze failure" "${tolerated_analyze}"
+	"  uses: github/codeql-action/analyze@${sha_one}"
 
-disabled_upload="${TMP_DIR}/disabled-upload.yml"
-printf '%s\n' \
+expect_steps fail "a CodeQL analyze step that disables upload" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: github/codeql-action/analyze@${sha_one}" \
 	'  with:' \
-	'    upload: never' >"${disabled_upload}"
-expect_fail "a CodeQL analyze step that disables upload" "${disabled_upload}"
+	'    upload: never'
 
-case_varied_upload="${TMP_DIR}/case-varied-upload.yml"
-printf '%s\n' \
+expect_steps fail "a case-varied CodeQL analyze upload input" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: github/codeql-action/analyze@${sha_one}" \
 	'  with:' \
-	'    UPLOAD: never' >"${case_varied_upload}"
-expect_fail "a case-varied CodeQL analyze upload input" "${case_varied_upload}"
+	'    UPLOAD: never'
 
-skipped_queries="${TMP_DIR}/skipped-queries.yml"
-printf '%s\n' \
+expect_steps fail "a CodeQL analyze step that skips queries" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: github/codeql-action/analyze@${sha_one}" \
 	'  with:' \
-	'    skip-queries: true' >"${skipped_queries}"
-expect_fail "a CodeQL analyze step that skips queries" "${skipped_queries}"
+	'    skip-queries: true'
 
-expected_error="${TMP_DIR}/expected-error.yml"
-printf '%s\n' \
+expect_steps fail "a CodeQL analyze step that expects an error" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: github/codeql-action/analyze@${sha_one}" \
 	'  with:' \
-	'    expect-error: true' >"${expected_error}"
-expect_fail "a CodeQL analyze step that expects an error" "${expected_error}"
+	'    expect-error: true'
 
-commented="${TMP_DIR}/commented.yml"
-printf '%s\n' \
+expect_steps fail "a commented analyze phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
-	"# uses: github/codeql-action/analyze@${sha_one}" >"${commented}"
-expect_fail "a commented analyze phase" "${commented}"
+	"# uses: github/codeql-action/analyze@${sha_one}"
 
-duplicate="${TMP_DIR}/duplicate.yml"
-printf '%s\n' \
+expect_steps fail "a duplicate init phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"uses: github/codeql-action/init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${duplicate}"
-expect_fail "a duplicate init phase" "${duplicate}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-duplicate_analyze="${TMP_DIR}/duplicate-analyze.yml"
-printf '%s\n' \
+expect_steps fail "a duplicate analyze phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"uses: github/codeql-action/analyze@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${duplicate_analyze}"
-expect_fail "a duplicate analyze phase" "${duplicate_analyze}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-swapped="${TMP_DIR}/swapped.yml"
-printf '%s\n' \
+expect_steps fail "swapped phases" \
 	"uses: github/codeql-action/analyze@${sha_one}" \
 	"run: go build ./..." \
-	"uses: github/codeql-action/init@${sha_one}" >"${swapped}"
-expect_fail "swapped phases" "${swapped}"
+	"uses: github/codeql-action/init@${sha_one}"
 
-mismatch="${TMP_DIR}/mismatch.yml"
-printf '%s\n' \
+expect_steps fail "different immutable revisions" \
 	"uses: github/codeql-action/init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_two}" >"${mismatch}"
-expect_fail "different immutable revisions" "${mismatch}"
+	"uses: github/codeql-action/analyze@${sha_two}"
 
-suffix="${TMP_DIR}/suffix.yml"
-printf '%s\n' \
+expect_steps fail "a movable init suffix after an immutable revision" \
 	"uses: github/codeql-action/init@${sha_one}-moving" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${suffix}"
-expect_fail "a movable init suffix after an immutable revision" "${suffix}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-suffix_analyze="${TMP_DIR}/suffix-analyze.yml"
-printf '%s\n' \
+expect_steps fail "a movable analyze suffix after an immutable revision" \
 	"uses: github/codeql-action/init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}-moving" >"${suffix_analyze}"
-expect_fail "a movable analyze suffix after an immutable revision" "${suffix_analyze}"
+	"uses: github/codeql-action/analyze@${sha_one}-moving"
 
-no_space_comment="${TMP_DIR}/no-space-comment.yml"
-printf '%s\n' \
+expect_steps fail "an init suffix that looks like a YAML comment" \
 	"uses: github/codeql-action/init@${sha_one}#moving" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${no_space_comment}"
-expect_fail "an init suffix that looks like a YAML comment" "${no_space_comment}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-no_space_analyze="${TMP_DIR}/no-space-analyze.yml"
-printf '%s\n' \
+expect_steps fail "an analyze suffix that looks like a YAML comment" \
 	"uses: github/codeql-action/init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}#moving" >"${no_space_analyze}"
-expect_fail "an analyze suffix that looks like a YAML comment" "${no_space_analyze}"
+	"uses: github/codeql-action/analyze@${sha_one}#moving"
 
 short_sha="${sha_one%?}"
-short_ref="${TMP_DIR}/short-ref.yml"
-printf '%s\n' \
+expect_steps fail "an init revision that is not 40 hexadecimal characters" \
 	"uses: github/codeql-action/init@${short_sha}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${short_ref}"
-expect_fail "an init revision that is not 40 hexadecimal characters" "${short_ref}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-short_analyze="${TMP_DIR}/short-analyze.yml"
-printf '%s\n' \
+expect_steps fail "an analyze revision that is not 40 hexadecimal characters" \
 	"uses: github/codeql-action/init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${short_sha}" >"${short_analyze}"
-expect_fail "an analyze revision that is not 40 hexadecimal characters" "${short_analyze}"
+	"uses: github/codeql-action/analyze@${short_sha}"
 
-short_pair="${TMP_DIR}/short-pair.yml"
-printf '%s\n' \
+expect_steps fail "a matching pair that is not 40 hexadecimal characters" \
 	"uses: github/codeql-action/init@${short_sha}" \
-	"uses: github/codeql-action/analyze@${short_sha}" >"${short_pair}"
-expect_fail "a matching pair that is not 40 hexadecimal characters" "${short_pair}"
+	"uses: github/codeql-action/analyze@${short_sha}"
 
-extra_list_item="${TMP_DIR}/extra-list-item.yml"
-printf '%s\n' \
+expect_steps fail "an extra list-item CodeQL phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: github/codeql-action/init@main" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${extra_list_item}"
-expect_fail "an extra list-item CodeQL phase" "${extra_list_item}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-extra_list_analyze="${TMP_DIR}/extra-list-analyze.yml"
-printf '%s\n' \
+expect_steps fail "an extra list-item CodeQL analyze phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: github/codeql-action/analyze@main" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${extra_list_analyze}"
-expect_fail "an extra list-item CodeQL analyze phase" "${extra_list_analyze}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-case_varied="${TMP_DIR}/case-varied.yml"
-printf '%s\n' \
+expect_steps fail "a case-varied extra CodeQL phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: GitHub/CodeQL-Action/init@main" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${case_varied}"
-expect_fail "a case-varied extra CodeQL phase" "${case_varied}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-case_varied_analyze="${TMP_DIR}/case-varied-analyze.yml"
-printf '%s\n' \
+expect_steps fail "a case-varied extra CodeQL analyze phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: GitHub/CodeQL-Action/analyze@main" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${case_varied_analyze}"
-expect_fail "a case-varied extra CodeQL analyze phase" "${case_varied_analyze}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-case_varied_pinned_init="${TMP_DIR}/case-varied-pinned-init.yml"
-printf '%s\n' \
+expect_steps fail "a case-varied pinned extra CodeQL init phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: GitHub/CodeQL-Action/init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${case_varied_pinned_init}"
-expect_fail "a case-varied pinned extra CodeQL init phase" "${case_varied_pinned_init}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-case_varied_pinned_analyze="${TMP_DIR}/case-varied-pinned-analyze.yml"
-printf '%s\n' \
+expect_steps fail "a case-varied pinned extra CodeQL analyze phase" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: GitHub/CodeQL-Action/analyze@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${case_varied_pinned_analyze}"
-expect_fail "a case-varied pinned extra CodeQL analyze phase" "${case_varied_pinned_analyze}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-dot_segment="${TMP_DIR}/dot-segment.yml"
-printf '%s\n' \
+expect_steps fail "a GitHub action path with a dot segment" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: github/codeql-action/init/.@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${dot_segment}"
-expect_fail "a GitHub action path with a dot segment" "${dot_segment}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
-parent_segment="${TMP_DIR}/parent-segment.yml"
-printf '%s\n' \
+expect_steps fail "a GitHub action path with a parent segment" \
 	"uses: github/codeql-action/init@${sha_one}" \
 	"- uses: github/codeql-action/unused/../init@${sha_one}" \
-	"uses: github/codeql-action/analyze@${sha_one}" >"${parent_segment}"
-expect_fail "a GitHub action path with a parent segment" "${parent_segment}"
+	"uses: github/codeql-action/analyze@${sha_one}"
 
 escaped_owner="${TMP_DIR}/escaped-owner.yml"
 printf '%s\n' \
