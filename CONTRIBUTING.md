@@ -18,7 +18,8 @@ Debian/Ubuntu:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck libusb-1.0-0-dev python3 shellcheck
+sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck \
+  libusb-1.0-0-dev python3 python3-yaml shellcheck
 ```
 
 Use Python 3.10 or newer. Local checks support Bash 3.2 or newer.
@@ -28,6 +29,8 @@ Install `actionlint` separately from the upstream release binaries and keep it a
 `v1.7.12` or newer. `v1.7.8` predates GitHub's `artifact-metadata` permission
 support and reports a false positive on the release workflows in this
 repository. `make lint` now requires `actionlint`.
+
+Install PyYAML 6.0 or newer for the Python 3 interpreter that runs `make lint`.
 
 ## Agent Control Plane
 

@@ -154,6 +154,7 @@ RUN set -eux; \
       curl \
       git \
       python3 \
+      python3-yaml \
       shellcheck; \
     /bin/bash /tmp/install-actionlint.sh; \
     rm -rf /var/lib/apt/lists/*

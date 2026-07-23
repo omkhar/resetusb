@@ -21,6 +21,7 @@ static-analysis)
 		curl
 		libusb-1.0-0-dev
 		python3
+		python3-yaml
 		shellcheck
 	)
 	;;

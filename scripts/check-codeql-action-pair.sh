@@ -13,39 +13,21 @@ if [[ ! -f "${workflow}" ]]; then
 	exit 2
 fi
 
-init_use_count="$(grep -Ec '^[[:space:]]*uses:[[:space:]]*github/codeql-action/init@' "${workflow}" || true)"
-analyze_use_count="$(grep -Ec '^[[:space:]]*uses:[[:space:]]*github/codeql-action/analyze@' "${workflow}" || true)"
-
-if [[ "${init_use_count}" != 1 || "${analyze_use_count}" != 1 ]]; then
-	echo "CodeQL workflow must contain exactly one init phase and one analyze phase" >&2
+if ! command -v actionlint >/dev/null 2>&1; then
+	echo "actionlint is required to check the CodeQL workflow" >&2
+	exit 2
+fi
+if ! actionlint -config-file /dev/null -shellcheck= -pyflakes= "${workflow}" >/dev/null; then
+	echo "CodeQL workflow must be valid before its action references are checked" >&2
 	exit 1
 fi
 
-init_ref="$(
-	sed -nE \
-		's#^[[:space:]]*uses:[[:space:]]*github/codeql-action/init@([0-9a-f]{40}).*#\1#p' \
-		"${workflow}"
+if ! python3 -I -c 'import yaml' >/dev/null 2>&1; then
+	echo "Python 3 and PyYAML are required to check workflow action references" >&2
+	exit 2
+fi
+
+SCRIPT_DIR="$(
+	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 )"
-analyze_ref="$(
-	sed -nE \
-		's#^[[:space:]]*uses:[[:space:]]*github/codeql-action/analyze@([0-9a-f]{40}).*#\1#p' \
-		"${workflow}"
-)"
-
-if [[ -z "${init_ref}" || -z "${analyze_ref}" ]]; then
-	echo "CodeQL init and analyze must use full immutable commit revisions" >&2
-	exit 1
-fi
-
-if [[ "${init_ref}" != "${analyze_ref}" ]]; then
-	echo "CodeQL init and analyze must use the same immutable revision" >&2
-	exit 1
-fi
-
-init_line="$(awk '/^[[:space:]]*uses:[[:space:]]*github\/codeql-action\/init@/ { print NR }' "${workflow}")"
-analyze_line="$(awk '/^[[:space:]]*uses:[[:space:]]*github\/codeql-action\/analyze@/ { print NR }' "${workflow}")"
-
-if ((init_line >= analyze_line)); then
-	echo "CodeQL init must occur before CodeQL analyze" >&2
-	exit 1
-fi
+exec python3 -I "${SCRIPT_DIR}/check-workflow-action-policy.py" "${workflow}"

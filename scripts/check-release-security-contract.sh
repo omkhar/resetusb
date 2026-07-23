@@ -129,7 +129,7 @@ EOF
 require_literal "CONTRIBUTING.md" "\`v1.7.12\` or newer."
 forbid_literal "CONTRIBUTING.md" "\`v1.7.10\` or newer."
 require_literal "CONTRIBUTING.md" \
-	"libusb-1.0-0-dev python3 shellcheck"
+	"libusb-1.0-0-dev python3 python3-yaml shellcheck"
 require_literal "CONTRIBUTING.md" "Use Python 3.10 or newer."
 require_literal "CONTRIBUTING.md" \
 	"Local checks support Bash 3.2 or newer."
@@ -236,7 +236,9 @@ require_literal "Makefile" 'scripts/check-actionlint-version.py'
 require_literal "Makefile" "./scripts/check-public-surface.sh"
 require_literal "Makefile" "./scripts/check-release-security-contract.sh"
 require_literal "Makefile" 'scripts/render-agent-control-plane.py --check'
+require_literal "scripts/install-ci-deps.sh" "python3-yaml"
 require_literal "scripts/release-preflight.sh" "make lint"
+require_literal "scripts/release-preflight.sh" "python3-yaml"
 
 "${SCRIPT_DIR}/check-codeql-action-pair.sh" ".github/workflows/codeql.yml"
 
