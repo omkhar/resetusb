@@ -478,7 +478,7 @@ run_deb_test() {
 					rm -rf "$gnu_coreutils_root/remove-check"
 					test ! -e "$gnu_coreutils_root/remove-check"
 				fi
-				apt-get install -y --no-install-recommends passwd
+				apt-get install -y --no-install-recommends ca-certificates passwd
 				dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Package: resetusb"
 				dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
 				dpkg-deb -c /dist/'"$(basename "${package_file}")"' | grep -Eq "usr/share/man/man8/resetusb\\.8(\\.gz)?$"

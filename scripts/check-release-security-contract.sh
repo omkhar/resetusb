@@ -210,7 +210,7 @@ forbid_literal "scripts/test-package-integration.sh" \
 require_literal ".clusterfuzzlite/Dockerfile" \
 	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:5d16653db7d96570d09b91e022867a0ff6fa32826fd5f3f0625e5afa61157414"
 forbid_literal ".clusterfuzzlite/Dockerfile" \
-	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:8aa36c8f128e4afa83ae566f413e944094a4923969b26b5cd85be6803d5eacf3"
+	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:cc6982a6ce8b02c80a2acabbcfe766e5e7200988ff0424b0d4963232c3b41901"
 
 require_literal "scripts/test-package-integration.sh" \
 	"RESETUSB_PACKAGE_TEST_TARGET=\"\${distro}/\${channel}/\${arch}\""
@@ -218,6 +218,8 @@ require_literal "scripts/test-package-integration.sh" \
 	'ubuntu/unstable/armv7'
 require_literal "scripts/test-package-integration.sh" 'gnu-coreutils'
 require_literal "scripts/test-package-integration.sh" 'gnurm'
+require_literal "scripts/test-package-integration.sh" \
+	'apt-get install -y --no-install-recommends ca-certificates passwd'
 
 while IFS= read -r image; do
 	require_literal "docker/package-test-images.lock" "${image}"
