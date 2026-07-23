@@ -208,9 +208,9 @@ require_literal "scripts/test-package-integration.sh" \
 forbid_literal "scripts/test-package-integration.sh" \
 	"tonistiigi/binfmt@sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3"
 require_literal ".clusterfuzzlite/Dockerfile" \
-	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:8aa36c8f128e4afa83ae566f413e944094a4923969b26b5cd85be6803d5eacf3"
+	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:5d16653db7d96570d09b91e022867a0ff6fa32826fd5f3f0625e5afa61157414"
 forbid_literal ".clusterfuzzlite/Dockerfile" \
-	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:cc6982a6ce8b02c80a2acabbcfe766e5e7200988ff0424b0d4963232c3b41901"
+	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:8aa36c8f128e4afa83ae566f413e944094a4923969b26b5cd85be6803d5eacf3"
 
 require_literal "scripts/test-package-integration.sh" \
 	"RESETUSB_PACKAGE_TEST_TARGET=\"\${distro}/\${channel}/\${arch}\""
