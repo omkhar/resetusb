@@ -3,11 +3,18 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/omkhar/resetusb/badge)](https://scorecard.dev/viewer/?uri=github.com/omkhar/resetusb)
 
 `resetusb` resets USB devices on Linux through `libusb`.
-Use it during recovery or maintenance when a device stops responding and needs
-to be re-enumerated.
+Use it during recovery or maintenance when a device does not respond.
+It asks `libusb` to do a USB port reset for each open device.
+This reset can reinitialize the device.
+If `libusb` requires re-enumeration, `resetusb` records a failure and does not rediscover the device.
 
-`resetusb` has no flags or filtering. When you run it, it attempts to reset
-every enumerated USB device it can open.
+This user documentation uses ASD-STE100 Simplified Technical English.
+
+`resetusb` has no flags or filtering. When you run it, it processes each entry
+in the `libusb` device list. It attempts a reset only after it reads a descriptor and opens a non-null handle.
+
+Read [LIMITATIONS.md](LIMITATIONS.md) before you run the program.
+Read [RUNTIMES.md](RUNTIMES.md) for runtime and build requirements.
 
 ## Project Status
 
@@ -26,7 +33,7 @@ every enumerated USB device it can open.
 
 - `resetusb` requires root privileges.
 - It refuses `setuid`-style or other mismatched real/effective UID invocations.
-- It resets every enumerated USB device, including hubs.
+- It can attempt a reset for each device that it opens. The device list can include hubs.
 - This can interrupt keyboards, storage, serial devices, and USB-backed networking.
 - Use it only during controlled maintenance or recovery work.
 
@@ -34,7 +41,7 @@ every enumerated USB device it can open.
 
 - Linux
 - Root privileges
-- A system `libusb-1.0` runtime when using the generic tarball (`libusb-1.0-0` on Debian/Ubuntu or `libusb1` on Fedora)
+- Generic tarballs require a system `libusb-1.0` runtime (`libusb-1.0-0` on Debian/Ubuntu or `libusb1` on Fedora).
 
 ## Build From Source
 
@@ -60,6 +67,9 @@ This installs the binary to `/usr/sbin/resetusb` and the man page to `/usr/share
 ```bash
 sudo ./resetusb
 ```
+
+The program ignores all command-line arguments. Thus, `--help` does not show help.
+It starts the normal reset operation. Do not supply arguments.
 
 After installation:
 
@@ -99,9 +109,8 @@ files for Codex, Claude, and Gemini.
 Canonical shared skills live in `.agents/skills/`. Generated Claude mirrors
 live in `.claude/skills/`.
 
-If you edit the canonical agent-control-plane source or shared skills,
-regenerate the checked-in agent files with the repository render script and
-verify the result with `make lint`.
+If you edit a canonical agent file, run the repository render script.
+Then run `make lint`.
 
 Keep agent-facing content public-repo safe: do not add internal-only notes,
 local paths, usernames, scratch artifacts, or other repository detritus.
@@ -112,18 +121,26 @@ scanning, and Scorecard checks.
 Notes:
 
 - `resetusb` exits `0` only when all attempted resets succeed.
-- It exits `1` if any device reset fails, if it is not run as root, if the real and effective UIDs do not match, or if `libusb` initialization or enumeration fails.
-- USB product strings are sanitized before printing so non-printable bytes do not reach the terminal.
+- It exits `1` if a device operation fails. The program continues with the next device.
+- It exits `1` when the user is not root or when the real and effective UIDs differ.
+- It exits `1` when `libusb` initialization or enumeration fails.
+- The program changes non-printable product-name bytes to question marks before it prints them.
 
 ## Releases
 
 - Public releases use semantic versioning and signed annotated tags in the form `vMAJOR.MINOR.PATCH`.
-- Release tags are immutable. If release contents need to change, a new patch version is cut.
-- Publication only happens after `release-preflight` succeeds, including a repeat-build digest comparison for the release artifacts.
-- The trusted builder is pinned by `docker/release-builder.lock`, which fixes the Debian base image digest, the Debian snapshot timestamp, and the expected snapshot `InRelease` digest used for build dependencies.
-- CI build/test jobs use the same snapshot-pinned Debian inputs as the release path, so the compiler and analysis toolchain does not drift independently of the release builder.
-- Release packaging requires either a real git checkout or an explicit `SOURCE_DATE_EPOCH`; the trusted workflows export the source commit timestamp into the builder automatically.
-- Tarballs include the binary and the `resetusb(8)` manual page. Distro packages install both.
+- Release tags are immutable. If release contents change, maintainers create a new patch version.
+- Publication only happens after `release-preflight` succeeds. This check includes a repeat-build digest comparison for the release artifacts.
+- `docker/release-builder.lock` pins the trusted builder inputs.
+- The lock fixes the Debian base image digest and snapshot timestamp.
+- It also fixes the expected snapshot `InRelease` digest for build dependencies.
+- CI build and test jobs use the same snapshot-pinned Debian inputs as the release path.
+- Thus, the compiler and analysis tools do not drift from the release builder.
+- Release packaging requires a Git checkout or an explicit `SOURCE_DATE_EPOCH`.
+- Trusted workflows set the builder time from the source commit timestamp.
+- Generic archives and distribution packages include these documents:
+  `README.md`, `LIMITATIONS.md`, and `RUNTIMES.md`.
+- They also include the binary, license, and `resetusb(8)` manual page.
 - Each release includes tarballs for:
   - `linux-amd64`
   - `linux-arm64`
@@ -137,10 +154,12 @@ Notes:
   - an SPDX JSON SBOM (`.spdx.json`)
   - a Sigstore keyless bundle for the artifact (`.sigstore.json`)
   - a Sigstore keyless bundle for the checksum (`.sha256.sigstore.json`)
-- Each release also includes a builder-signed release manifest (`resetusb-vMAJOR.MINOR.PATCH-release-manifest.json`) with the release tag, the commit digest resolved from the signed tag, the trusted builder digest, the reproducible builder inputs, and SHA256 hashes for the primary artifacts. The manifest contract is versioned and documented in `release-manifest.schema.json`.
+- Each release includes a builder-signed release manifest named `resetusb-vMAJOR.MINOR.PATCH-release-manifest.json`.
+- The manifest contains the release tag, commit digest, trusted builder digest, reproducible inputs, and primary artifact SHA256 hashes.
+- `release-manifest.schema.json` defines the manifest contract and its version.
 - GitHub Actions also emits per-asset provenance and SBOM attestations before publication, and publish re-verifies them against the trusted builder workflow revision.
-- Maintainer release steps are documented in `CONTRIBUTING.md`.
-- Release notes for the next patch cut are tracked in `CHANGELOG.md`.
+- `CONTRIBUTING.md` contains the maintainer release steps.
+- `CHANGELOG.md` contains the release notes for the next patch version.
 
 Release validation matrix:
 
@@ -233,12 +252,17 @@ gh attestation verify \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
-Public release provenance is rooted in the trusted builder workflow from the signed release tag itself. The builder also signs a release manifest that records the artifact digests, the builder revision, the snapshot-pinned builder inputs, and the commit digest resolved from that same signed tag. Primary artifact timestamps are normalized from the source commit time so rebuilding the same tag produces byte-stable tarballs and distro packages. Fresh SBOMs, signatures, and attestations are generated at release time.
+The signed release tag establishes public release provenance.
+The trusted builder signs a release manifest.
+The manifest records artifact digests, the builder revision, snapshot-pinned inputs, and the commit digest from the signed tag.
+The source commit time determines primary artifact timestamps.
+If you rebuild the same tag, the process produces byte-stable tarballs and distribution packages.
+The release process generates new SBOMs, signatures, and attestations.
 
 ## Community
 
 - Report bugs: open a GitHub Issue with logs and reproduction steps.
-- Propose changes: open a PR and follow `.github/pull_request_template.md`.
+- Propose changes: open a PR. Follow `.github/pull_request_template.md`.
 - Security reports: see [SECURITY.md](SECURITY.md).
 - Development guidance: see [CONTRIBUTING.md](CONTRIBUTING.md).
 - Community expectations: see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
@@ -246,13 +270,14 @@ Public release provenance is rooted in the trusted builder workflow from the sig
 ## Coding Style
 
 - C source follows Linux kernel style conventions.
-- Formatting is enforced with `.clang-format`.
-- Run `make format` before submitting style-related changes.
+- `.clang-format` defines the source format.
+- Run `make format` before you submit style-related changes.
 
 ## Documentation
 
-- Keep `README.md` and `resetusb(8)` in sync.
-- If you change CLI behavior, output semantics, installation paths, or release packaging, update both in the same change.
+- Keep `README.md`, `LIMITATIONS.md`, and `resetusb(8)` consistent.
+- Update [RUNTIMES.md](RUNTIMES.md) when a runtime or immutable runtime input changes.
+- If you change command behavior, output, installation paths, or packaging, update the related documents.
 
 ## License
 

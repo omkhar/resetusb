@@ -1,22 +1,25 @@
 # Security Policy
 
+This document uses ASD-STE100 Simplified Technical English.
+
 ## Supported Platforms
 
 - Linux (actively tested in CI)
-- Release artifacts are validated on Debian stable/sid, Ubuntu 24.04/devel, and Fedora stable/rawhide.
+- CI validates release artifacts on Debian stable and sid, Ubuntu 24.04 and devel, and Fedora stable and rawhide.
 
 ## Reporting a Vulnerability
 
-Please report vulnerabilities privately through GitHub Security Advisories for this repository:
+Report vulnerabilities privately through GitHub Security Advisories for this repository:
 https://github.com/omkhar/resetusb/security/advisories/new
 
-If private reporting is not available, open an issue with minimal details and request a private follow-up.
+If private reporting is not available, open an issue with minimal details.
+Request a private follow-up.
 
 Response targets:
 
 - Initial acknowledgment: within 3 business days
 - Status update: within 7 business days
-- Coordinated disclosure: after a fix is available or mitigation is documented
+- Coordinated disclosure: after maintainers provide a fix or document a mitigation
 
 Please include:
 
@@ -30,16 +33,23 @@ Please include:
 - `resetusb` requires root by design.
 - The runtime refuses mismatched real/effective UID execution contexts.
 - CI covers static analysis, shell linting, unit tests, sanitizers, package validation, fuzzing, and secret scanning.
-- The release-adjacent CI toolchain is snapshot-pinned so build and analysis jobs do not drift independently from the trusted builder.
-- The default branch requires pull-request review plus code-owner review for
-  contributed changes, while the single repository owner retains pull-request
-  bypass rights for self-maintained changes.
-- The Debian snapshot bootstrap path uses Debian archive signing, the pinned base image digest, and a pinned snapshot `InRelease` digest for integrity. The initial snapshot fetch remains plain HTTP because CA roots are not available until the first package install.
-- Releases are published only after `release-preflight` succeeds.
-- Public releases are built in GitHub Actions from signed annotated semver tags. The trusted builder workflow runs from the selected signed tag, verifies that workflow revision before building, uses the snapshot-pinned inputs recorded in `docker/release-builder.lock`, and the published release manifest records the commit digest and reproducible builder inputs that were built.
-- Release artifacts include generic tarballs, distro-specific packages, the `resetusb(8)` manual page, SHA256 checksums, SPDX JSON SBOMs, Sigstore keyless bundles (`.sigstore.json`), and GitHub provenance plus SBOM attestations.
+- The release CI toolchain uses snapshot-pinned inputs.
+- Build and analysis jobs use the same inputs as the trusted builder.
+- Branch rules require two approvals, code-owner review, approval after the last push, and resolved conversations.
+- The rules require signed commits and all required checks.
+- The rules also apply to repository administrators.
+- The Debian snapshot setup uses Debian archive signing, a pinned base image digest, and a pinned snapshot `InRelease` digest.
+- The initial snapshot fetch uses plain HTTP because the base image initially has no CA roots.
+- `release-preflight` must succeed before publication.
+- GitHub Actions builds public releases from signed annotated semver tags.
+- The trusted builder workflow runs from the selected signed tag.
+- It verifies the workflow revision before the build.
+- It uses the snapshot-pinned inputs in `docker/release-builder.lock`.
+- The release manifest records the commit digest and reproducible builder inputs.
+- Release artifacts include generic tarballs, distribution packages, the `resetusb(8)` manual page, and SHA256 checksums.
+- They include SPDX JSON SBOMs, Sigstore keyless bundles, GitHub provenance, and SBOM attestations.
 
 ## Out of Scope
 
-- Security of downstream systems where `resetusb` is executed with elevated privileges.
+- Security controls in downstream systems that run `resetusb` with root privileges.
 - Hardware/firmware bugs in third-party USB devices.

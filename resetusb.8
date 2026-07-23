@@ -1,25 +1,33 @@
-.TH RESETUSB 8 "March 22, 2026" "resetusb" "System Administration"
+.\" This document uses ASD-STE100 Simplified Technical English.
+.TH RESETUSB 8 "July 22, 2026" "resetusb" "System Administration"
 .SH NAME
-resetusb \- reset all enumerated USB devices on Linux
+resetusb \- attempt resets for enumerated USB devices on Linux
 .SH SYNOPSIS
 .B resetusb
 .SH DESCRIPTION
 .B resetusb
 enumerates USB devices through
 .BR libusb (3)
-and issues a reset to every device it can open.
-Use it during maintenance or recovery when a USB device stops responding and
-needs to be reprobed by the kernel.
+and processes each device-list entry.
+It attempts a reset only after it reads a device descriptor and opens a non-null handle.
+Use it during maintenance or recovery when a USB device does not respond.
+It asks libusb to do a USB port reset for every device that it can open.
+This reset can reinitialize the device.
+If libusb requires re-enumeration, resetusb records a failure and does not
+rediscover the device.
 .PP
-This utility takes no command-line options.
-When invoked, it attempts to reset every enumerated USB device, including
-hubs. That can interrupt keyboards, storage devices, serial adapters, and
+This utility ignores all command-line arguments.
+The
+.B --help
+argument does not show help. It starts the normal reset operation.
+It can attempt a reset for each device that it opens. The device list can include hubs.
+That can interrupt keyboards, storage devices, serial adapters, and
 USB-backed network interfaces.
 .PP
 Use
 .B resetusb
-only during maintenance or recovery work where temporary USB disruption is
-acceptable.
+only during maintenance or recovery work where you permit temporary USB
+disruption.
 .SH OUTPUT
 For each successful reset,
 .B resetusb
@@ -37,22 +45,49 @@ prints a final summary line similar to:
 Summary: reset 1 device(s), 0 failure(s)
 .EE
 .PP
-Failures are written to standard error and include the bus number, device
-address, vendor ID, product ID, product string when available, and the
-underlying libusb error name.
+The program writes failures to standard error.
+A null device entry reports only its list index.
+A descriptor failure reports the bus number, device address, and libusb error
+name.
+An open failure reports the bus number, device address, vendor ID, product ID,
+and libusb error name.
+A null-handle failure reports the same device fields and the text
+.BR "null handle" .
+A reset failure also reports the product name.
+.PP
+Privilege failures do not contain device fields.
+Initialization and enumeration failures do not contain device fields.
+For a device-specific failure, the program records one failure.
+It continues with the next device.
+The program does not print a summary after an initialization or enumeration
+failure.
+.PP
+The product name is
+.B <unknown>
+when the descriptor has no product-string index. It is
+.B <string unavailable>
+when libusb cannot return the string. The program changes non-printable bytes
+to question marks.
 .SH EXIT STATUS
 .TP
 .B 0
 All attempted resets completed without failures.
 .TP
 .B 1
-At least one reset failed, the process was not run with the required
-privileges, the real and effective UIDs did not match, or libusb setup or
-enumeration failed.
+The program returns 1 after a device failure, privilege failure, or invalid
+internal call.
+It also returns 1 after a libusb initialization or enumeration failure.
 .SH REQUIREMENTS
 .B resetusb
-only runs on Linux and must be executed as root.
+only runs on Linux. Run it as root.
 It refuses mismatched real and effective UID execution contexts.
+.SH LIMITATIONS
+.B resetusb
+has no filter, exclusion list, dry-run mode, confirmation step, retry, or
+rollback. It processes devices one at a time. It does not quiesce drivers,
+unmount file systems, or guarantee device recovery.
+.PP
+For the complete list, read LIMITATIONS.md in the source.
 .SH FILES
 .TP
 .I /usr/sbin/resetusb
@@ -63,9 +98,9 @@ Installed manual page path.
 .SH SAFETY
 Because
 .B resetusb
-resets every enumerated USB device, it can disconnect the very peripherals
+attempts resets for devices that it opens, it can disconnect the peripherals
 needed to manage the host.
-Plan for console access or another recovery path before using it on remote
+Plan for console access or another recovery path before you use it on remote
 systems.
 .SH SEE ALSO
 .BR libusb (3),
