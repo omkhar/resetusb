@@ -1,4 +1,4 @@
-FROM gcr.io/oss-fuzz-base/base-builder:v1@sha256:cc6982a6ce8b02c80a2acabbcfe766e5e7200988ff0424b0d4963232c3b41901
+FROM gcr.io/oss-fuzz-base/base-builder:v1@sha256:5d16653db7d96570d09b91e022867a0ff6fa32826fd5f3f0625e5afa61157414
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libusb-1.0-0-dev \

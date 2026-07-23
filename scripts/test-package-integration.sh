@@ -14,7 +14,7 @@ DIST_DIR="${DIST_DIR:-${REPO_ROOT}/dist}"
 PACKAGE_TEST_IMAGE_LOCK_FILE="${PACKAGE_TEST_IMAGE_LOCK_FILE:-${REPO_ROOT}/docker/package-test-images.lock}"
 PACKAGE_TEST_CHANNELS="${PACKAGE_TEST_CHANNELS:-stable unstable}"
 PACKAGE_TEST_ARCHES="${PACKAGE_TEST_ARCHES:-amd64 arm64 armv7}"
-BINFMT_IMAGE="${BINFMT_IMAGE:-tonistiigi/binfmt@sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3}"
+BINFMT_IMAGE="${BINFMT_IMAGE:-tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0}"
 SEMVER_RELEASE_TAG_REGEX='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 DEV_ARTIFACT_VERSION_REGEX='^dev-[0-9a-f]{12}$'
 LOCKED_IMAGE_REF_REGEX='^[a-z0-9./_-]+(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$'
@@ -449,6 +449,7 @@ run_deb_test() {
 
 		docker run --rm \
 			--platform="${platform}" \
+			-e RESETUSB_PACKAGE_TEST_TARGET="${distro}/${channel}/${arch}" \
 			-v "${WORK_ROOT}":/work:ro \
 			-v "${DIST_DIR}":/dist:ro \
 			-v "${extracted_dir}":/tarball:ro \
@@ -457,6 +458,26 @@ run_deb_test() {
 			sh -euxc '
 				export DEBIAN_FRONTEND=noninteractive
 				apt-get update
+				if [ "$RESETUSB_PACKAGE_TEST_TARGET" = "ubuntu/unstable/armv7" ]; then
+					gnu_coreutils_root=/tmp/resetusb-gnu-coreutils
+					mkdir -p "$gnu_coreutils_root/archive" "$gnu_coreutils_root/root"
+					chown _apt "$gnu_coreutils_root/archive"
+					(
+						cd "$gnu_coreutils_root/archive"
+						apt-get download gnu-coreutils
+					)
+					set -- "$gnu_coreutils_root"/archive/gnu-coreutils_*.deb
+					test "$#" -eq 1
+					test -f "$1"
+					dpkg-deb -x "$1" "$gnu_coreutils_root/root"
+					test "$(readlink /usr/bin/rm)" = "../lib/cargo/bin/coreutils/rm"
+					ln -sfn "$gnu_coreutils_root/root/usr/bin/gnurm" /usr/bin/rm
+					rm --version | grep -Fq "rm (GNU coreutils)"
+					mkdir "$gnu_coreutils_root/remove-check"
+					: >"$gnu_coreutils_root/remove-check/file"
+					rm -rf "$gnu_coreutils_root/remove-check"
+					test ! -e "$gnu_coreutils_root/remove-check"
+				fi
 				apt-get install -y --no-install-recommends ca-certificates passwd
 				dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Package: resetusb"
 				dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
