@@ -35,5 +35,5 @@ Control-plane maintenance:
 - Canonical shared skills live in `.agents/skills/`.
 - The repository render script writes Claude mirrors to `.claude/skills/`.
 - Regenerate with `python3 scripts/render-agent-control-plane.py`.
-- Verify generated surfaces with `make verify-agent-control-plane`; run broader
+- Verify generated surfaces with `make verify-agent-control-plane`. Run broader
   checks only when the changed surface requires them.

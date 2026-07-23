@@ -123,9 +123,11 @@ lint:
 	"$(PYTHON)" scripts/check-actionlint-version.py "$${actionlint_version}"
 	actionlint
 	$(PYTHON) scripts/render-agent-control-plane.py --check
+	$(PYTHON) scripts/check-documentation-style.py
 	./scripts/check-public-surface.sh
 	./scripts/test-codeql-action-pair.sh
 	./scripts/check-release-security-contract.sh
+	./scripts/check-documentation-contract.sh
 
 check-release-contract:
 	./scripts/test-codeql-action-pair.sh

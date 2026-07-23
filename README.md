@@ -15,6 +15,7 @@ in the `libusb` device list. It attempts a reset only after it reads a descripto
 
 Read [LIMITATIONS.md](LIMITATIONS.md) before you run the program.
 Read [RUNTIMES.md](RUNTIMES.md) for runtime and build requirements.
+Read [FUNCTIONS.md](FUNCTIONS.md) for the source-derived function inventory.
 
 ## Project Status
 
@@ -139,7 +140,7 @@ Notes:
 - Release packaging requires a Git checkout or an explicit `SOURCE_DATE_EPOCH`.
 - Trusted workflows set the builder time from the source commit timestamp.
 - Generic archives and distribution packages include these documents:
-  `README.md`, `LIMITATIONS.md`, and `RUNTIMES.md`.
+  `README.md`, `FUNCTIONS.md`, `LIMITATIONS.md`, and `RUNTIMES.md`.
 - They also include the binary, license, and `resetusb(8)` manual page.
 - Each release includes tarballs for:
   - `linux-amd64`
@@ -277,7 +278,13 @@ The release process generates new SBOMs, signatures, and attestations.
 
 - Keep `README.md`, `LIMITATIONS.md`, and `resetusb(8)` consistent.
 - Update [RUNTIMES.md](RUNTIMES.md) when a runtime or immutable runtime input changes.
+- Update [FUNCTIONS.md](FUNCTIONS.md) when a non-test source function changes.
 - If you change command behavior, output, installation paths, or packaging, update the related documents.
+- `make lint` checks every tracked Markdown, reStructuredText, text, and section 8 manual file.
+- The style checker permits 20 words in an instruction and 25 words in a descriptive sentence.
+- It rejects selected unapproved words, unapproved `-ing` forms, contractions, passive patterns, combined instructions, and disallowed punctuation.
+- It skips fenced code, inline technical syntax, and link targets.
+- It checks headings and counts each heading as one word.
 
 ## License
 

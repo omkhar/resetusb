@@ -486,7 +486,7 @@ run_deb_test() {
 				package_root=/tmp/resetusb-package
 				mkdir -p "$package_root"
 				dpkg-deb -x "$package_file" "$package_root"
-				for document in LIMITATIONS.md README.md RUNTIMES.md; do
+				for document in FUNCTIONS.md LIMITATIONS.md README.md RUNTIMES.md; do
 					dpkg-deb -c "$package_file" | grep -Eq "usr/share/doc/resetusb/${document}$"
 					test -f "$package_root/usr/share/doc/resetusb/${document}"
 					grep -Fq "ASD-STE100 Simplified Technical English" \
@@ -506,7 +506,7 @@ run_deb_test() {
 				binary="$(find /tarball -type f -name resetusb | head -n 1)"
 				test -x "$binary"
 				find /tarball -type f -name "resetusb.8*" | grep -q .
-				for document in LIMITATIONS.md README.md RUNTIMES.md; do
+				for document in FUNCTIONS.md LIMITATIONS.md README.md RUNTIMES.md; do
 					document_path="$(find /tarball -type f -name "$document" | head -n 1)"
 					test -f "$document_path"
 					grep -Fq "ASD-STE100 Simplified Technical English" "$document_path"
@@ -565,7 +565,7 @@ run_rpm_test() {
 				package_root=/tmp/resetusb-package
 				mkdir -p "$package_root"
 				rpm2archive "$package_file" >"$package_root/resetusb.rpm.tgz"
-				for document in LIMITATIONS.md README.md RUNTIMES.md; do
+				for document in FUNCTIONS.md LIMITATIONS.md README.md RUNTIMES.md; do
 					rpm -qlp "$package_file" | grep -Eq "^/usr/share/doc/resetusb/${document}$"
 					tar -tzf "$package_root/resetusb.rpm.tgz" | \
 						grep -Eq "^\\./usr/share/doc/resetusb/${document}$"
@@ -587,7 +587,7 @@ run_rpm_test() {
 				binary="$(find /tarball -type f -name resetusb | head -n 1)"
 				test -x "$binary"
 				find /tarball -type f -name "resetusb.8*" | grep -q .
-				for document in LIMITATIONS.md README.md RUNTIMES.md; do
+				for document in FUNCTIONS.md LIMITATIONS.md README.md RUNTIMES.md; do
 					document_path="$(find /tarball -type f -name "$document" | head -n 1)"
 					test -f "$document_path"
 					grep -Fq "ASD-STE100 Simplified Technical English" "$document_path"
