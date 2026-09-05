@@ -51,7 +51,7 @@ trigger applies.
   `make verify-agent-control-plane`, `make check-public-surface`, and
   `make lint`
 - C source or unit-test changes: `make clean && make`, `make test`,
-  `make check-format`
+  `make check-format`, `make lint`
 - Output, sanitization, or boundary-sensitive changes: `make sanitize`
 - Parser, string, or bounds changes: `make fuzz FUZZ_TIME=10`
 - Shell or workflow changes: `make lint`
