@@ -1,0 +1,19 @@
+# Codex-only project guidance; shared agent instructions remain in AGENTS.md.
+# Codex CLI 0.153.2 is the validated baseline; older [agents] schemas are unsupported.
+# Sources reviewed 2026-09-04:
+# https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices
+# https://learn.chatgpt.com/docs/agent-configuration/subagents
+developer_instructions = """
+Complete the authorized task using the repository's instructions and acceptance checks.
+Use independent, bounded subagents when they save time or improve quality; handle atomic work directly when delegation adds overhead. Keep workers as leaves and respect the configured or runtime concurrency limit.
+Select models by ambiguity, coupling, consequences, and verification difficulty, not task keywords. Use gpt-5.6-luna with low reasoning for narrow inventory, extraction, mechanical edits, and bounded checks; gpt-5.6-terra with medium reasoning for ordinary bounded work; gpt-5.6-sol with high reasoning for complex coupled work; and gpt-6-astra with high reasoning for the hardest ambiguous, architectural, or unresolved work. Use additional supported Astra reasoning only when evidence warrants it.
+Use actual model and reasoning controls advertised by the runtime, or a configured role that sets both. Task names do not select models. A fixed role can override explicit spawn settings: select another role or a direct spawn to escalate. Give each worker the relevant context, permitted scope, deliverable, and acceptance checks; request concise evidence.
+If a worker cannot meet its checks, reassess the scope and model with its evidence rather than repeating identical attempts. If selection is unavailable, report that limitation and use another available model only if it can satisfy the same checks. Verify selection through runtime metadata where available; do not rely on a worker's self-description.
+Do not claim that instructions switch the running parent model. Preserve explicit user model choices and higher-priority runtime instructions. Run required repository checks and broaden validation only when changes, failures, or unresolved concerns justify it.
+"""
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+default_subagent_model = "gpt-5.6-terra"
+default_subagent_reasoning_effort = "medium"
