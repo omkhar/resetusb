@@ -48,7 +48,8 @@ All concrete repository and CI gates remain required when their documented
 trigger applies.
 
 - Agent control-plane or Codex configuration changes:
-  `make verify-agent-control-plane` and `make check-public-surface`
+  `make verify-agent-control-plane`, `make check-public-surface`, and
+  `make lint`
 - C source or unit-test changes: `make clean && make`, `make test`,
   `make check-format`
 - Output, sanitization, or boundary-sensitive changes: `make sanitize`
