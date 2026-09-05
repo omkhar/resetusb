@@ -43,15 +43,18 @@ documents, follow the executable checks and the repository documents.
 
 ## Validation
 
-Run the smallest complete set for the files you touched, but do not skip the
-required gates.
+Run the smallest complete set for the files you touched.
+All concrete repository and CI gates remain required when their documented
+trigger applies.
 
-- All changes: `make lint`
+- Agent control-plane or Codex configuration changes:
+  `make verify-agent-control-plane`, `make check-public-surface`, and
+  `make lint`
 - C source or unit-test changes: `make clean && make`, `make test`,
-  `make check-format`
+  `make check-format`, `make lint`
 - Output, sanitization, or boundary-sensitive changes: `make sanitize`
 - Parser, string, or bounds changes: `make fuzz FUZZ_TIME=10`
-- Workflow changes: `actionlint`
+- Shell or workflow changes: `make lint`
 - Release, packaging, builder, or manifest changes: `make release-preflight`
 
 ## Control Plane

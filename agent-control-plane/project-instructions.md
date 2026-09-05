@@ -7,6 +7,9 @@ second policy layer here.
 
 Use `resetusb-change-gate` for every repository change.
 
+Codex only: `.codex/config.toml` contains Codex-native model and delegation
+guidance. Other agents ignore this paragraph.
+
 Core invariants:
 
 - Keep changes simple, focused, and easy to review.
@@ -24,4 +27,5 @@ Control-plane maintenance:
 - Canonical shared skills live in `.agents/skills/`.
 - Claude mirrors are generated into `.claude/skills/`.
 - Regenerate with `python3 scripts/render-agent-control-plane.py`.
-- Verify with `make lint`.
+- Verify generated surfaces with `make verify-agent-control-plane`; run broader
+  checks only when the changed surface requires them.
