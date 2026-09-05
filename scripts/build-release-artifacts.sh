@@ -421,7 +421,7 @@ create_rpm_package() {
 	rpm_root="$(mktemp -d)"
 	mkdir -p "${rpm_root}/BUILD" "${rpm_root}/BUILDROOT" \
 		"${rpm_root}/RPMS" "${rpm_root}/SOURCES" "${rpm_root}/SPECS" \
-		"${rpm_root}/SRPMS"
+		"${rpm_root}/SRPMS" "${rpm_root}/rpmdb"
 
 	install -m 0755 "${BIN_DIR}/${arch}/resetusb" \
 		"${rpm_root}/SOURCES/resetusb"
@@ -470,10 +470,12 @@ EOF
 
 	normalize_tree_timestamps "${rpm_root}"
 	rpmbuild --quiet \
+		--nodeps \
+		--dbpath "${rpm_root}/rpmdb" \
 		--define "_topdir ${rpm_root}" \
 		--define "_buildhost reproducible" \
 		--define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
-		--define "clamp_mtime_to_source_date_epoch 1" \
+		--define "build_mtime_policy clamp_to_source_date_epoch" \
 		--define "use_source_date_epoch_as_buildtime 1" \
 		--target "${rpm_arch}" \
 		-bb "${spec_path}"

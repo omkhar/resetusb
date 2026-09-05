@@ -6,6 +6,8 @@
 #define RESETUSB_TEST
 #include "../resetusb.c"
 
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
+
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	char *name = NULL;

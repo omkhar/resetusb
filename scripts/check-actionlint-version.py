@@ -6,7 +6,7 @@ import re
 import sys
 
 
-MINIMUM = (1, 7, 10)
+MINIMUM = (1, 7, 12)
 
 
 def parse_version(raw: str) -> tuple[int, int, int]:
