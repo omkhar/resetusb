@@ -1,16 +1,18 @@
 # Contributing to resetusb
 
+This document uses ASD-STE100 Simplified Technical English.
+
 ## Guidelines
 
 - Keep changes small, reviewable, and security-conscious.
 - Preserve the safety messaging: this tool can disrupt active USB-connected systems.
 - Keep Linux-only assumptions explicit in code, CI, and docs.
 - Follow Linux kernel C style for source changes.
-- Do not add automatic staging/production deployment jobs in this repository.
+- Do not add automatic staging or production deployment jobs in this repository.
 
 ## Community Expectations
 
-By participating, you agree to follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+When you participate, you agree to follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Setup
 
@@ -25,24 +27,26 @@ sudo apt-get install -y build-essential clang clang-format clang-tools cppcheck 
 Use Python 3.10 or newer. Local checks support Bash 3.2 or newer.
 Release and package scripts require Bash 4.0 or newer.
 
-Install `actionlint` separately from the upstream release binaries and keep it at
-`v1.7.12` or newer. `v1.7.8` predates GitHub's `artifact-metadata` permission
-support and reports a false positive on the release workflows in this
-repository. `make lint` now requires `actionlint`.
+Install `actionlint` from the upstream release binaries.
+Use `v1.7.12` or newer.
+`v1.7.8` incorrectly rejects GitHub's `artifact-metadata` permission in this repository.
+`make lint` requires `actionlint`.
 
 Install PyYAML 6.0 or newer for the Python 3 interpreter that runs `make lint`.
 
 ## Agent Control Plane
 
-- `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` are generated files. Do not hand-edit them.
+- The repository render script generates `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md`.
+- Do not edit these files manually.
 - Canonical shared skills live in `.agents/skills/`.
-- `.claude/skills/` is a generated mirror of the canonical shared skills.
-- After editing the canonical agent-control-plane source or shared skills, rerun the repository render script and then `make lint`.
-- Keep agent-facing content public-repo appropriate: remove internal-only notes, local paths, usernames, scratch artifacts, and other repository detritus before opening a PR.
+- The repository render script writes the Claude skill mirror to `.claude/skills/`.
+- After you edit a canonical agent file, run `python3 scripts/render-agent-control-plane.py`.
+- Then run `make lint`.
+- Before you open a PR, remove internal notes, local paths, usernames, scratch artifacts, and repository waste from public files.
 
 ## Before Opening a PR
 
-Run these checks before opening a pull request:
+Run these checks before you open a pull request:
 
 ```bash
 make clean
@@ -70,32 +74,60 @@ make format
 ## Pull Requests
 
 - Include a short problem statement and rationale.
-- Include exact commands run and summarized results.
-- Add/adjust unit tests when behavior changes.
-- Keep PRs under 20 changed files and 750 total changed lines; split larger work before pushing.
+- Include the exact commands that you ran.
+- Summarize the results.
+- Add unit tests when behavior changes.
+- Keep each PR to no more than 20 changed files and 750 total changed lines.
+- Split a larger change before you push it.
 - Keep GitHub Actions references pinned to immutable commit SHAs.
-- If you change the canonical agent-control-plane source, include the regenerated `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and `.claude/skills/` updates in the same PR.
+- If you change a canonical agent file, include all related generated files in the same PR.
 - Document behavior changes in `README.md` and `SECURITY.md` when they affect users or operators.
 - Update `resetusb.8` when user-visible behavior, output, installation paths, or packaging contents change.
 
 ## Release Process
 
-- Public releases use semantic versioning.
-- Bump `MAJOR` for breaking behavior or release-contract changes, `MINOR` for backward-compatible features, and `PATCH` for backward-compatible fixes.
-- Create and push a signed annotated tag in the form `vMAJOR.MINOR.PATCH` at the commit you intend to release (for example `git tag -s vMAJOR.MINOR.PATCH -m "resetusb release vMAJOR.MINOR.PATCH"`).
-- Summarize release-ready changes in `CHANGELOG.md` before cutting the tag.
-- Run `make release-preflight` before cutting the tag. It rebuilds the release artifacts twice and compares digests before publish is allowed to proceed.
-- After pushing a signed semver tag, manually dispatch `release.yml` using that same tag as the workflow ref. The workflow verifies that the checked-out workflow revision matches the signed tag digest, runs `release-preflight`, builds and signs the release artifacts, signs a release manifest for the artifact set, verifies the resulting attestations against the trusted builder workflow revision, and publishes the release.
-- Published release tags are immutable. If anything in the release contents changes, merge a fix and cut a new patch version instead of rebuilding or replacing an existing tag.
-- If a release run fails before publication, rerun the workflow for the same tag. The publish step reuses any existing draft, rewrites the draft notes, and replaces the draft assets before publication.
-- The trusted builder inputs live in `docker/release-builder.lock`. If you need to refresh the release toolchain, update that file in the same PR as the builder or packaging change and explain the reason in the PR description.
-- The Debian snapshot bootstrap path still starts over plain HTTP because the pinned base image does not carry CA roots before the first package install. Integrity comes from the pinned base image digest, Debian archive signing, and the pinned snapshot `InRelease` digest recorded in `docker/release-builder.lock`.
-- Release packaging derives `SOURCE_DATE_EPOCH` from the source commit timestamp and uses the snapshot-pinned builder image so rebuilding the same tag reproduces the primary tarballs and distro packages. Release-time SBOMs and signatures are expected to be regenerated.
-- Ad hoc release-artifact builds now require either git metadata for the source tree or an explicit `SOURCE_DATE_EPOCH`; the trusted workflows export the commit timestamp into the builder automatically.
-- The release manifest contract is versioned in `release-manifest.schema.json`. If you add or rename manifest fields, bump the manifest format version and update the schema, validator, and docs in the same change.
-- Release packaging is validated against stable and unstable distro channels before publication:
+- Use semantic versioning for public releases.
+- Increase `MAJOR` for a breaking behavior or release-contract change.
+- Increase `MINOR` for a backward-compatible feature.
+- Increase `PATCH` for a backward-compatible fix.
+- Create a signed annotated tag at the release commit. Use the form `vMAJOR.MINOR.PATCH`.
+- Push the signed tag.
+- Before you create the tag, summarize release-ready changes in `CHANGELOG.md`.
+- Before you create the tag, run `make release-preflight`.
+- The preflight builds the release artifacts twice.
+- It compares the two sets of digests.
+- A digest mismatch stops publication.
+- After you push the tag, manually start `release.yml` with that tag as the workflow reference.
+- The workflow verifies that its revision matches the signed tag digest.
+- It runs `release-preflight`.
+- It builds the release artifacts.
+- It signs the artifacts and a release manifest.
+- It verifies the attestations against the trusted builder revision.
+- It publishes the release.
+- Do not change a published release tag.
+- If release contents change, merge a fix.
+- Then create a new patch version.
+- If a release run fails before publication, rerun the workflow for the same tag.
+- The publish step reuses an existing draft.
+- It rewrites the draft notes and replaces the draft assets.
+- The trusted builder inputs live in `docker/release-builder.lock`.
+- When you refresh the release toolchain, update that file with the builder or packaging change.
+- Explain the reason in the PR description.
+- The Debian snapshot setup starts over plain HTTP.
+- The pinned base image does not contain CA roots before the first package installation.
+- The pinned base image digest, Debian archive signing, and pinned snapshot `InRelease` digest protect integrity.
+- Release packaging gets `SOURCE_DATE_EPOCH` from the source commit timestamp.
+- The snapshot-pinned builder makes primary tarballs and distribution packages reproducible for the same tag.
+- Release operations generate new SBOMs and signatures.
+- Ad hoc release-artifact builds require Git metadata or an explicit `SOURCE_DATE_EPOCH`.
+- Trusted workflows set the builder time from the source commit timestamp.
+- `release-manifest.schema.json` defines the release manifest contract and its version.
+- If you add or rename manifest fields, increase the manifest format version.
+- Update the schema, validator, and documents in the same change.
+- Release package checks cover these stable and unstable distribution channels:
   - Debian stable and sid on `amd64`, `arm64`, and `armv7`
   - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`
   - Fedora stable and rawhide on `amd64`
-- Do not publish binaries manually outside the release workflow or bypass the builder workflow.
-- When packaging changes, verify that release artifacts still include the installed documentation set, especially `resetusb(8)`.
+- Do not publish binaries outside the release workflow.
+- Do not bypass the builder workflow.
+- When the packaging changes, verify that release artifacts include the installed documents, especially `resetusb(8)`.

@@ -1,31 +1,41 @@
 # Changelog
 
+This document uses ASD-STE100 Simplified Technical English.
+
+## Unreleased
+
+- The pending release refreshes pinned GitHub Actions, analysis tools, Debian builder inputs, and package validation images.
+- It adds current runtime, limitation, behavior, and failure-output documentation.
+
 ## v2.0.15
 
-- Refresh the pinned `docker/setup-qemu-action` workflow dependency used by CI,
-  nightly release preflight, and release publication.
+- This release refreshes the pinned `docker/setup-qemu-action` dependency for CI, nightly preflight, and release publication.
 
 ## v2.0.14
 
-- Refresh the pinned Debian `trixie` base image used by CI containers and the
-  trusted release-builder lock.
-- Bump the pinned GitHub Actions and workflow toolchain dependencies used by
-  repository validation, including checkout, CodeQL/upload-sarif,
-  dependency-review, setup-go, setup-qemu, and zizmor.
+- This release refreshes the Debian `trixie` image for CI containers and the trusted builder lock.
+- It updates the pinned GitHub Actions and workflow tools for repository validation.
+- These tools include checkout, CodeQL, upload-sarif, dependency-review, setup-go, setup-qemu, and zizmor.
 
 ## v2.0.13
 
-- Add a repo-owned portable agent control plane with canonical shared instructions, generated `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`, and a generated Claude skill mirror so Codex, Claude, and Gemini consume the same project invariants.
-- Enforce public-repo hygiene and control-plane drift in `make lint`, including checks for leaked local paths, internal-only references, local-only config files, scratch detritus, and unsynchronized generated agent surfaces.
-- Install pinned upstream `actionlint` binaries in CI and local static-analysis bootstrap paths, and require `actionlint` `v1.7.10` or newer.
-- Enforce reviewable pull requests in CI by rejecting PRs over 20 changed files or 750 total changed lines, matching the repo policy for small, human-reviewable changes.
-- Tighten the release security contract check so CI must keep the snapshot digest validation in each bootstrap path and must keep the lint path that enforces the release guard itself.
-- Remove host-side Bash 4-only `mapfile` and associative-array dependencies from the release reproducibility and package-smoke scripts so local `make release-preflight` stays portable on older macOS Bash environments.
+- This release adds a portable repository agent control plane with canonical instructions and generated agent files.
+- It adds a Claude skill mirror. Codex, Claude, and Gemini now use the same project rules.
+- It adds public-file and control-plane drift checks to `make lint`.
+- These checks find local paths, internal references, local configuration, scratch waste, and generated-file drift.
+- CI installs pinned upstream `actionlint` binaries. Local static-analysis setup also installs these binaries.
+- Repository checks require `actionlint` `v1.7.10` or newer.
+- CI rejects PRs with more than 20 files or 750 changed lines.
+- The release security contract keeps snapshot digest validation in each setup path and keeps the release guard in lint.
+- Host release scripts no longer use Bash 4 `mapfile` or associative arrays.
+- Local release preflight now works with older macOS Bash versions.
 
 ## v2.0.12
 
-- Clamp oversized USB product-string lengths before appending a terminating NUL, closing a root-process out-of-bounds write in `resetusb_run()`.
-- Pin and verify the Debian snapshot `InRelease` digest during CI and builder bootstrap so the trusted toolchain cannot silently drift under snapshot replay or substitution.
-- Anchor release publication and manifest provenance to the signed release tag instead of the mutable `main` branch workflow revision.
-- Add a checked-in release security contract check to `make lint` so CI keeps enforcing the snapshot lock and tag-anchored release invariants.
-- Document that local workflow linting needs `actionlint` `v1.7.10` or newer because older releases such as `v1.7.8` falsely reject GitHub's `artifact-metadata` permission.
+- This release limits oversized USB product strings before the program adds a terminating NUL.
+- This change closes an out-of-bounds write in the root process.
+- CI and builder setup pin and verify the Debian snapshot `InRelease` digest.
+- The signed release tag establishes release publication and manifest provenance.
+- A release security contract check in `make lint` keeps the snapshot lock and tag-based release rules.
+- Local workflow checks require `actionlint` `v1.7.10` or newer.
+- Older releases incorrectly reject the GitHub `artifact-metadata` permission.

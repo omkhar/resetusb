@@ -1,9 +1,11 @@
 ---
 name: resetusb-change-gate
-description: Use this skill for every change in this repository, including code, docs, tests, workflows, release tooling, and repo hygiene work. It enforces resetusb's simplicity, safety, validation, public-repo hygiene, and reviewability expectations.
+description: Use this skill for every repository change. It requires simple, safe, validated, public, and reviewable work.
 ---
 
 # resetusb Change Gate
+
+This document uses ASD-STE100 Simplified Technical English.
 
 If guidance here conflicts with executable repo checks or repository policy
 documents, follow the executable checks and the repository documents.
@@ -29,23 +31,18 @@ documents, follow the executable checks and the repository documents.
 ## Working Rules
 
 - Keep changes small, reviewable, and tightly scoped.
-- When pushing work remotely, keep every PR narrow enough for a human to reason
-  about the size, complexity, and risk quickly.
-- Split unrelated work into separate commits or PRs instead of batching it.
+- Keep every remote PR narrow. A human must understand its size, complexity, and risk quickly.
+- Put unrelated work in separate commits or PRs.
 - Preserve Linux-only assumptions and the existing runtime safety messaging.
 - Do not add automatic staging or production deployment jobs in this repository.
-- Do not hand-edit generated `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or
-  `.claude/skills/*`. Edit the canonical sources and rerender.
+- Do not edit generated `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or `.claude/skills/*` files.
+- Edit the canonical sources. Then run the repository render script.
 - Remove obsolete code, scripts, or configuration that your change replaces.
-- Before closeout, strip internal-only notes, local usernames and paths,
-  scratch artifacts, temporary reports, and repository detritus from public
-  surfaces.
+- Before closeout, remove internal notes, local usernames and paths, scratch artifacts, temporary reports, and repository waste from public files.
 
 ## Validation
 
-Run the smallest complete set for the files you touched.
-All concrete repository and CI gates remain required when their documented
-trigger applies.
+Run the smallest complete set for the files you changed. Do not skip a required gate.
 
 - Agent control-plane or Codex configuration changes:
   `make verify-agent-control-plane`, `make check-public-surface`, and
@@ -61,6 +58,6 @@ trigger applies.
 
 - Canonical shared instructions: `agent-control-plane/project-instructions.md`
 - Canonical shared skills: `.agents/skills/`
-- Generated Claude mirror: `.claude/skills/`
-- Regenerate after editing canonical sources:
+- The repository render script writes the Claude mirror to `.claude/skills/`.
+- After you edit canonical sources, run:
   `python3 scripts/render-agent-control-plane.py`

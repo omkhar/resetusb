@@ -456,6 +456,7 @@ run_deb_test() {
 			-w /work \
 			"${image}" \
 			sh -euxc '
+				package_file=/dist/'"$(basename "${package_file}")"'
 				export DEBIAN_FRONTEND=noninteractive
 				apt-get update
 				if [ "$RESETUSB_PACKAGE_TEST_TARGET" = "ubuntu/unstable/armv7" ]; then
@@ -479,10 +480,19 @@ run_deb_test() {
 					test ! -e "$gnu_coreutils_root/remove-check"
 				fi
 				apt-get install -y --no-install-recommends ca-certificates passwd
-				dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Package: resetusb"
-				dpkg-deb -I /dist/'"$(basename "${package_file}")"' | grep -q "Architecture: '"${package_arch}"'"
-				dpkg-deb -c /dist/'"$(basename "${package_file}")"' | grep -Eq "usr/share/man/man8/resetusb\\.8(\\.gz)?$"
-				apt-get install -y /dist/'"$(basename "${package_file}")"'
+				dpkg-deb -I "$package_file" | grep -q "Package: resetusb"
+				dpkg-deb -I "$package_file" | grep -q "Architecture: '"${package_arch}"'"
+				dpkg-deb -c "$package_file" | grep -Eq "usr/share/man/man8/resetusb\\.8(\\.gz)?$"
+				package_root=/tmp/resetusb-package
+				mkdir -p "$package_root"
+				dpkg-deb -x "$package_file" "$package_root"
+				for document in LIMITATIONS.md README.md RUNTIMES.md; do
+					dpkg-deb -c "$package_file" | grep -Eq "usr/share/doc/resetusb/${document}$"
+					test -f "$package_root/usr/share/doc/resetusb/${document}"
+					grep -Fq "ASD-STE100 Simplified Technical English" \
+						"$package_root/usr/share/doc/resetusb/${document}"
+				done
+				apt-get install -y "$package_file"
 				test -x /usr/sbin/resetusb
 				ldd /usr/sbin/resetusb | grep -q libusb
 				useradd -m tester
@@ -496,6 +506,11 @@ run_deb_test() {
 				binary="$(find /tarball -type f -name resetusb | head -n 1)"
 				test -x "$binary"
 				find /tarball -type f -name "resetusb.8*" | grep -q .
+				for document in LIMITATIONS.md README.md RUNTIMES.md; do
+					document_path="$(find /tarball -type f -name "$document" | head -n 1)"
+					test -f "$document_path"
+					grep -Fq "ASD-STE100 Simplified Technical English" "$document_path"
+				done
 				mkdir -p /tmp/tarball-bin
 				install -m 0755 "$binary" /tmp/tarball-bin/resetusb
 				ldd /tmp/tarball-bin/resetusb | grep -q libusb
@@ -543,10 +558,22 @@ run_rpm_test() {
 			-w /work \
 			"${image}" \
 			sh -euxc '
-				rpm -qpi /dist/'"$(basename "${package_file}")"' | grep -Eq "^Name[[:space:]]*: resetusb$"
-				rpm -qpi /dist/'"$(basename "${package_file}")"' | grep -Eq "^Architecture[[:space:]]*: '"${rpm_arch}"'$"
-				rpm -qlp /dist/'"$(basename "${package_file}")"' | grep -Eq "^/usr/share/man/man8/resetusb\\.8(\\.gz)?$"
-				dnf install -y shadow-utils util-linux /dist/'"$(basename "${package_file}")"'
+				package_file=/dist/'"$(basename "${package_file}")"'
+				rpm -qpi "$package_file" | grep -Eq "^Name[[:space:]]*: resetusb$"
+				rpm -qpi "$package_file" | grep -Eq "^Architecture[[:space:]]*: '"${rpm_arch}"'$"
+				rpm -qlp "$package_file" | grep -Eq "^/usr/share/man/man8/resetusb\\.8(\\.gz)?$"
+				package_root=/tmp/resetusb-package
+				mkdir -p "$package_root"
+				rpm2archive "$package_file" >"$package_root/resetusb.rpm.tgz"
+				for document in LIMITATIONS.md README.md RUNTIMES.md; do
+					rpm -qlp "$package_file" | grep -Eq "^/usr/share/doc/resetusb/${document}$"
+					tar -tzf "$package_root/resetusb.rpm.tgz" | \
+						grep -Eq "^\\./usr/share/doc/resetusb/${document}$"
+					tar -xOzf "$package_root/resetusb.rpm.tgz" \
+						"./usr/share/doc/resetusb/${document}" | \
+						grep -Fq "ASD-STE100 Simplified Technical English"
+				done
+				dnf install -y shadow-utils util-linux "$package_file"
 				test -x /usr/sbin/resetusb
 				ldd /usr/sbin/resetusb | grep -q libusb
 				useradd -m tester
@@ -560,6 +587,11 @@ run_rpm_test() {
 				binary="$(find /tarball -type f -name resetusb | head -n 1)"
 				test -x "$binary"
 				find /tarball -type f -name "resetusb.8*" | grep -q .
+				for document in LIMITATIONS.md README.md RUNTIMES.md; do
+					document_path="$(find /tarball -type f -name "$document" | head -n 1)"
+					test -f "$document_path"
+					grep -Fq "ASD-STE100 Simplified Technical English" "$document_path"
+				done
 				mkdir -p /tmp/tarball-bin
 				install -m 0755 "$binary" /tmp/tarball-bin/resetusb
 				ldd /tmp/tarball-bin/resetusb | grep -q libusb

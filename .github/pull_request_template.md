@@ -1,10 +1,12 @@
+<!-- This document uses ASD-STE100 Simplified Technical English. -->
+
 ## Summary
 
 <!-- What changed and why? -->
 
 <!-- Keep the PR narrow enough for a human reviewer to reason about quickly.
      CI now rejects PRs over 20 changed files or 750 changed lines. Split
-     unrelated or oversized work before pushing. -->
+     unrelated or oversized work before you push. -->
 
 ## Validation
 
@@ -18,7 +20,7 @@
 
 ## Safety Checklist
 
-- [ ] I confirmed no staging/production deploy jobs were added.
+- [ ] I did not add a staging or production deployment job.
 - [ ] I added/updated tests for behavior changes.
 - [ ] I reviewed logs/output for sensitive data exposure.
 - [ ] I kept GitHub Actions references pinned to immutable commit SHAs.

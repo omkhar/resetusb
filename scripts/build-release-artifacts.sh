@@ -131,6 +131,12 @@ declare -A ARCH_QEMU=(
 	[armv7]="qemu-arm -L /usr/arm-linux-gnueabihf"
 )
 
+readonly -a RELEASE_DOCUMENTS=(
+	README.md
+	LIMITATIONS.md
+	RUNTIMES.md
+)
+
 require_cmd() {
 	command -v "$1" >/dev/null 2>&1 || {
 		echo "$1 not found" >&2
@@ -345,6 +351,7 @@ build_binary() {
 
 create_tarball() {
 	local arch="$1"
+	local document
 	local stage_name="${ARTIFACT_VERSION}-linux-${ARCH_TARBALL[${arch}]}"
 	local archive_path="${DIST_DIR}/resetusb-${ARTIFACT_VERSION}-linux-${ARCH_TARBALL[${arch}]}.tar.gz"
 	local stage_path="${STAGE_DIR}/${stage_name}"
@@ -354,8 +361,11 @@ create_tarball() {
 
 	install -m 0755 "${BIN_DIR}/${arch}/resetusb" "${stage_path}/resetusb"
 	install -m 0644 "${SOURCE_ROOT}/resetusb.8" "${stage_path}/resetusb.8"
-	install -m 0644 "${SOURCE_ROOT}/README.md" "${stage_path}/README.md"
 	install -m 0644 "${SOURCE_ROOT}/LICENSE" "${stage_path}/LICENSE"
+	for document in "${RELEASE_DOCUMENTS[@]}"; do
+		install -m 0644 "${SOURCE_ROOT}/${document}" \
+			"${stage_path}/${document}"
+	done
 
 	normalize_tree_timestamps "${stage_path}"
 	(
@@ -372,6 +382,7 @@ create_deb_package() {
 	local arch="$2"
 	local deb_arch="${ARCH_DEB[${arch}]}"
 	local artifact="${DIST_DIR}/resetusb-${ARTIFACT_VERSION}-${distro}-${deb_arch}.deb"
+	local document
 	local pkg_root
 
 	pkg_root="$(mktemp -d)"
@@ -382,12 +393,14 @@ create_deb_package() {
 
 	install -m 0755 "${BIN_DIR}/${arch}/resetusb" \
 		"${pkg_root}/usr/sbin/resetusb"
-	install -m 0644 "${SOURCE_ROOT}/README.md" \
-		"${pkg_root}/usr/share/doc/resetusb/README.md"
 	install -m 0644 "${SOURCE_ROOT}/LICENSE" \
 		"${pkg_root}/usr/share/doc/resetusb/LICENSE"
 	install -m 0644 "${SOURCE_ROOT}/resetusb.8" \
 		"${pkg_root}/usr/share/man/man8/resetusb.8"
+	for document in "${RELEASE_DOCUMENTS[@]}"; do
+		install -m 0644 "${SOURCE_ROOT}/${document}" \
+			"${pkg_root}/usr/share/doc/resetusb/${document}"
+	done
 
 	cat >"${pkg_root}/DEBIAN/control" <<EOF
 Package: resetusb
@@ -415,6 +428,7 @@ create_rpm_package() {
 	local rpm_root
 	local spec_path
 	local built_rpm
+	local document
 	local -a built_rpms=()
 	local artifact="${DIST_DIR}/resetusb-${ARTIFACT_VERSION}-fedora-${rpm_arch}.rpm"
 
@@ -425,12 +439,14 @@ create_rpm_package() {
 
 	install -m 0755 "${BIN_DIR}/${arch}/resetusb" \
 		"${rpm_root}/SOURCES/resetusb"
-	install -m 0644 "${SOURCE_ROOT}/README.md" \
-		"${rpm_root}/SOURCES/README.md"
 	install -m 0644 "${SOURCE_ROOT}/LICENSE" \
 		"${rpm_root}/SOURCES/LICENSE"
 	install -m 0644 "${SOURCE_ROOT}/resetusb.8" \
 		"${rpm_root}/SOURCES/resetusb.8"
+	for document in "${RELEASE_DOCUMENTS[@]}"; do
+		install -m 0644 "${SOURCE_ROOT}/${document}" \
+			"${rpm_root}/SOURCES/${document}"
+	done
 
 	spec_path="${rpm_root}/SPECS/resetusb.spec"
 	cat >"${spec_path}" <<EOF
@@ -443,8 +459,10 @@ URL: ${HOMEPAGE}
 Requires: libusb1
 Source0: resetusb
 Source1: README.md
-Source2: LICENSE
-Source3: resetusb.8
+Source2: LIMITATIONS.md
+Source3: RUNTIMES.md
+Source4: LICENSE
+Source5: resetusb.8
 
 %description
 resetusb enumerates USB devices and issues resets for operational recovery
@@ -458,12 +476,16 @@ controlled maintenance windows.
 %install
 install -D -m 0755 %{SOURCE0} %{buildroot}%{_sbindir}/resetusb
 install -D -m 0644 %{SOURCE1} %{buildroot}%{_docdir}/resetusb/README.md
-install -D -m 0644 %{SOURCE2} %{buildroot}%{_licensedir}/resetusb/LICENSE
-install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man8/resetusb.8
+install -D -m 0644 %{SOURCE2} %{buildroot}%{_docdir}/resetusb/LIMITATIONS.md
+install -D -m 0644 %{SOURCE3} %{buildroot}%{_docdir}/resetusb/RUNTIMES.md
+install -D -m 0644 %{SOURCE4} %{buildroot}%{_licensedir}/resetusb/LICENSE
+install -D -m 0644 %{SOURCE5} %{buildroot}%{_mandir}/man8/resetusb.8
 
 %files
 %license %{_licensedir}/resetusb/LICENSE
 %doc %{_docdir}/resetusb/README.md
+%doc %{_docdir}/resetusb/LIMITATIONS.md
+%doc %{_docdir}/resetusb/RUNTIMES.md
 %{_mandir}/man8/resetusb.8*
 %attr(0755,root,root) %{_sbindir}/resetusb
 EOF
