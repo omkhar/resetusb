@@ -97,6 +97,11 @@ preflight_docker_args=(
 	--user "${CONTAINER_UID_GID}"
 	-v "${SOURCE_ROOT}:/source"
 	-w /source
+	# Docker Desktop can present the bind mount with a different owner
+	# than the container user. Mark the mount safe for every git call.
+	-e GIT_CONFIG_COUNT=1
+	-e GIT_CONFIG_KEY_0=safe.directory
+	-e GIT_CONFIG_VALUE_0=/source
 )
 if [[ -f "${SOURCE_ROOT}/.git" ]]; then
 	preflight_docker_args+=(-v "${git_common_dir}:${git_common_dir}:ro")
@@ -194,6 +199,9 @@ gitleaks_docker_args=(
 	-v "${SOURCE_ROOT}:/repo:ro"
 	-w /repo
 	--entrypoint /bin/sh
+	-e GIT_CONFIG_COUNT=1
+	-e GIT_CONFIG_KEY_0=safe.directory
+	-e GIT_CONFIG_VALUE_0=/repo
 )
 if [[ -f "${SOURCE_ROOT}/.git" ]]; then
 	gitleaks_docker_args+=(-v "${git_common_dir}:${git_common_dir}:ro")
