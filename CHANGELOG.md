@@ -2,9 +2,9 @@
 
 This document uses ASD-STE100 Simplified Technical English.
 
-## Unreleased
+## v2.0.16
 
-- The pending release refreshes pinned GitHub Actions, analysis tools, Debian builder inputs, and package validation images.
+- This release refreshes pinned GitHub Actions, analysis tools, Debian builder inputs, and package validation images.
 - It adds current runtime, function, limitation, behavior, failure-output, and package-content documentation.
 - It puts the linked user documents in generic archives and distribution packages.
 - It adds an automated Simplified Technical English check for tracked documentation.
