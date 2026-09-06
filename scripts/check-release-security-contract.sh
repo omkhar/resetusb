@@ -137,7 +137,7 @@ for path in \
 	fi
 done
 
-require_literal ".github/workflows/security-baseline.yml" 'go-version: "1.26.5"'
+require_literal ".github/workflows/security-baseline.yml" 'go-version: "1.27.1"'
 require_literal ".github/workflows/security-baseline.yml" \
 	"github.com/zricethezav/gitleaks/v8@v8.30.1"
 require_literal "scripts/release-preflight.sh" \
@@ -160,11 +160,11 @@ fi
 for path in \
 	".github/workflows/release-builder.yml" \
 	".github/workflows/release.yml"; do
-	require_literal "${path}" 'version="v3.1.2"'
+	require_literal "${path}" 'version="v3.1.3"'
 	require_literal "${path}" \
-		'expected_sha256="f7622ed3cf22e55e1ae6377c080979ff77a22da9981c11df222a2e444991e7cf"'
+		'expected_sha256="4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71"'
 done
-require_literal ".github/workflows/release-builder.yml" "syft-version: v1.49.0"
+require_literal ".github/workflows/release-builder.yml" "syft-version: v1.51.1"
 require_literal "scripts/check-actionlint-version.py" "MINIMUM = (1, 7, 12)"
 
 if grep -R -Fq -- "runs-on: ubuntu-latest" .github/workflows; then
@@ -211,7 +211,7 @@ The program must run as root.
 Local checks support Bash 3.2 or newer.
 Release and package scripts require Bash 4.0 or newer.
 Repository checks require Python 3.10 or newer.
-Repository security automation uses Go 1.26.5.
+Repository security automation uses Go 1.27.1.
 GitHub-hosted jobs use Ubuntu 24.04.
 `make release-preflight` needs the Docker command and a Docker daemon.
 The preflight accepts only an `amd64` or `arm64` Docker server.
