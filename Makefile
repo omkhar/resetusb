@@ -15,11 +15,7 @@ LDLIBS += -lusb-1.0
 CC_BIN := $(notdir $(lastword $(CC)))
 EXTRA_WARN_CFLAGS :=
 
-ifeq ($(CC_BIN),gcc)
-EXTRA_WARN_CFLAGS += -Wtrampolines
-endif
-
-ifeq ($(CC_BIN),cc)
+ifneq (,$(filter $(CC_BIN),gcc cc))
 EXTRA_WARN_CFLAGS += -Wtrampolines
 endif
 

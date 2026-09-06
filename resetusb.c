@@ -6,26 +6,9 @@
 #include <string.h>
 #include <unistd.h>
 
-static int ops_complete(const resetusb_ops *ops)
-{
-	return ops != NULL && ops->libusb_init != NULL &&
-	       ops->libusb_get_device_list != NULL &&
-	       ops->libusb_free_device_list != NULL &&
-	       ops->libusb_exit != NULL && ops->libusb_get_bus_number != NULL &&
-	       ops->libusb_get_device_address != NULL &&
-	       ops->libusb_get_device_descriptor != NULL &&
-	       ops->libusb_open != NULL &&
-	       ops->libusb_get_string_descriptor_ascii != NULL &&
-	       ops->libusb_reset_device != NULL && ops->libusb_close != NULL &&
-	       ops->libusb_error_name != NULL;
-}
-
 static const char *safe_error_name(const resetusb_ops *ops, int code)
 {
-	const char *name = NULL;
-	if (ops->libusb_error_name != NULL) {
-		name = ops->libusb_error_name(code);
-	}
+	const char *name = ops->libusb_error_name(code);
 	return name != NULL ? name : "unknown";
 }
 
@@ -61,12 +44,6 @@ int resetusb_run(const resetusb_ops *ops, uid_t ruid, uid_t euid, FILE *out,
 	int resets = 0;
 
 	if (out == NULL || err == NULL) {
-		return 1;
-	}
-
-	if (!ops_complete(ops)) {
-		fprintf(err,
-			"Internal error: incomplete libusb operations table\n");
 		return 1;
 	}
 
