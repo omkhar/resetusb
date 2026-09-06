@@ -34,8 +34,8 @@ This reference describes each non-test function in the program and repository au
 | `check-documentation-style.py: main` | Tracked documents. | Runs self-tests and document checks. Returns 1 after a declaration or style failure. |
 | `check-workflow-action-policy.py: require_mapping` | A value and a name. | Returns the mapping. A value that is not a mapping stops the check. |
 | `check-workflow-action-policy.py: require_immutable_action` | One `uses` value. | Returns a valid immutable action reference. A mutable or invalid reference stops the check. |
-| `check-workflow-action-policy.py: check_workflow` | A workflow path. | Validates each action reference and the CodeQL phase pair. A violation stops the check. |
-| `check-workflow-action-policy.py: main` | One workflow argument. | Returns 0 for a valid workflow, 1 for a violation, and 2 for incorrect use. |
+| `check-workflow-action-policy.py: check_workflow` | A workflow path and a pair requirement. | Validates each action reference. Validates the CodeQL phase pair when required or present. A violation stops the check. |
+| `check-workflow-action-policy.py: main` | An optional pair flag and one workflow argument. | Returns 0 for a valid workflow, 1 for a violation, and 2 for incorrect use. |
 | `release-builder.yml: load_builder_lock` | The release-builder lock path. | Returns valid key-value entries. It ignores blank lines and comments. An invalid entry stops the workflow step. |
 | `render-agent-control-plane.py: build_agent_doc` | A file name, skill path, and shared text. | Returns one generated agent document. |
 | `render-agent-control-plane.py: write_if_changed` | A path and text. | Writes changed text and returns true. Returns false when text is equal. |
@@ -81,7 +81,7 @@ Shell functions stop their script when a required command, value, file, digest, 
 | `check-documentation-contract.sh: compare_inventory` | A name and two inventories. | Requires the source and documented inventories to be equal. |
 | `check-release-security-contract.sh: require_literal` | A file and literal text. | Requires the text in the file. |
 | `check-release-security-contract.sh: forbid_literal` | A file and literal text. | Rejects the text in the file. |
-| `check-release-security-contract.sh: require_action_pin` | An action and expected identity. | Requires each use to have the expected immutable commit and version comment. |
+| `check-release-security-contract.sh: require_digest_ref` | A file and an image prefix. | Requires a digest-pinned reference with the prefix in the file. |
 | `check-release-security-contract.sh: require_literal_after` | A file, marker, text, and line limit. | Requires the text in the limited section after the marker. |
 | `check-reviewable-pr.sh: require_integer` | A name and value. | Accepts a non-negative integer. |
 | `release-preflight.sh: require_cmd` | A command name. | Requires the command on `PATH`. |
@@ -111,6 +111,7 @@ Shell functions stop their script when a required command, value, file, digest, 
 | `test-codeql-action-pair.sh: expect_pass` | A name and a steps file. | Wraps the steps in a workflow and requires the checker to pass. |
 | `test-codeql-action-pair.sh: expect_fail` | A name and a steps file. | Wraps the steps in a workflow and requires the checker to fail. |
 | `test-codeql-action-pair.sh: expect_steps` | A mode, a name, and step lines. | Writes the step lines to a fixture and runs the pass or fail check. |
+| `test-codeql-action-pair.sh: run_checker` | A workflow file. | Validates the fixture with `actionlint` and runs the workflow action policy check. |
 | `test-codeql-action-pair.sh: expect_workflow_pass` | A name and a workflow file. | Validates the fixture with `actionlint` and requires the checker to pass. |
 | `test-codeql-action-pair.sh: expect_workflow_fail` | A name and a workflow file. | Validates the fixture with `actionlint` and requires the checker to fail. |
 | `test-codeql-action-pair.sh: wrap_fixture` | A steps file and an output path. | Writes a complete workflow around the step lines. |

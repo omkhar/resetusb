@@ -48,7 +48,7 @@ def require_immutable_action(value: Any) -> str:
     raise PolicyError("Each external action must use an immutable revision")
 
 
-def check_workflow(path: Path) -> None:
+def check_workflow(path: Path, require_codeql_pair: bool) -> None:
     try:
         # BaseLoader keeps GitHub job identifiers such as "yes" and "true" distinct.
         document = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
@@ -93,6 +93,9 @@ def check_workflow(path: Path) -> None:
                         raise PolicyError("CodeQL analyze must run queries and upload results")
                 codeql_phases.append((job_id, phase, revision.lower()))
 
+    if not codeql_phases and not require_codeql_pair:
+        return
+
     if len(codeql_phases) != 2:
         raise PolicyError("The workflow must have one CodeQL init step and one analyze step")
 
@@ -106,12 +109,20 @@ def check_workflow(path: Path) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("usage: check-workflow-action-policy.py WORKFLOW", file=sys.stderr)
+    arguments = sys.argv[1:]
+    require_codeql_pair = False
+    if arguments and arguments[0] == "--require-codeql-pair":
+        require_codeql_pair = True
+        arguments = arguments[1:]
+    if len(arguments) != 1:
+        print(
+            "usage: check-workflow-action-policy.py [--require-codeql-pair] WORKFLOW",
+            file=sys.stderr,
+        )
         return 2
 
     try:
-        check_workflow(Path(sys.argv[1]))
+        check_workflow(Path(arguments[0]), require_codeql_pair)
     except PolicyError as error:
         print(error, file=sys.stderr)
         return 1

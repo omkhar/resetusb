@@ -5,7 +5,13 @@ set -euo pipefail
 SCRIPT_DIR="$(
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 )"
-CHECKER="${SCRIPT_DIR}/check-codeql-action-pair.sh"
+POLICY_CHECKER="${SCRIPT_DIR}/check-workflow-action-policy.py"
+
+run_checker() {
+	actionlint -config-file /dev/null -shellcheck= -pyflakes= "$1" \
+		>/dev/null &&
+		python3 -I "${POLICY_CHECKER}" --require-codeql-pair "$1"
+}
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -42,7 +48,7 @@ expect_workflow_pass() {
 		echo "Expected ${name} to be a valid workflow fixture" >&2
 		exit 1
 	fi
-	if ! "${CHECKER}" "${workflow}"; then
+	if ! run_checker "${workflow}"; then
 		echo "Expected ${name} to pass" >&2
 		exit 1
 	fi
@@ -56,7 +62,7 @@ expect_workflow_fail() {
 		echo "Expected ${name} to be a valid workflow fixture" >&2
 		exit 1
 	fi
-	if "${CHECKER}" "${workflow}" >/dev/null 2>&1; then
+	if run_checker "${workflow}" >/dev/null 2>&1; then
 		echo "Expected ${name} to fail" >&2
 		exit 1
 	fi
@@ -105,13 +111,11 @@ expect_pass "one ordered matching pair" "${valid}"
 
 shadow_checker_dir="${TMP_DIR}/shadow-checker"
 mkdir -p "${shadow_checker_dir}"
-cp \
-	"${CHECKER}" \
-	"${SCRIPT_DIR}/check-workflow-action-policy.py" \
-	"${shadow_checker_dir}/"
+cp "${POLICY_CHECKER}" "${shadow_checker_dir}/"
 printf '%s\n' 'raise RuntimeError("repository yaml.py was imported")' \
 	>"${shadow_checker_dir}/yaml.py"
-if ! "${shadow_checker_dir}/check-codeql-action-pair.sh" "${valid}.workflow.yml"; then
+if ! python3 -I "${shadow_checker_dir}/check-workflow-action-policy.py" \
+	--require-codeql-pair "${valid}.workflow.yml"; then
 	echo "Expected repository Python modules not to affect the checker" >&2
 	exit 1
 fi
@@ -203,7 +207,7 @@ printf '%s\n' \
 	'- <<: *pinned_init' \
 	"uses: github/codeql-action/analyze@${sha_one}" >"${merge_alias}"
 wrap_fixture "${merge_alias}" "${merge_alias}.workflow.yml"
-if "${CHECKER}" "${merge_alias}.workflow.yml" >/dev/null 2>&1; then
+if run_checker "${merge_alias}.workflow.yml" >/dev/null 2>&1; then
 	echo "Expected a merge-key duplicate init phase to fail" >&2
 	exit 1
 fi
@@ -327,7 +331,7 @@ printf '%s\n' \
 	'  analyze:' \
 	'    runs-on: ubuntu-latest' \
 	'    steps: [' >"${invalid_workflow}"
-if "${CHECKER}" "${invalid_workflow}" >/dev/null 2>&1; then
+if run_checker "${invalid_workflow}" >/dev/null 2>&1; then
 	echo "Expected an invalid workflow to fail" >&2
 	exit 1
 fi
@@ -359,7 +363,7 @@ printf '%s\n' \
 		echo "Expected the fixture actionlint configuration to suppress its error" >&2
 		exit 1
 	fi
-	if "${CHECKER}" .github/workflows/codeql.yml >/dev/null 2>&1; then
+	if run_checker .github/workflows/codeql.yml >/dev/null 2>&1; then
 		echo "Expected repository actionlint ignores not to affect the checker" >&2
 		exit 1
 	fi

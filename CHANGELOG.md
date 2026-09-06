@@ -8,6 +8,9 @@ This document uses ASD-STE100 Simplified Technical English.
 - It adds current runtime, function, limitation, behavior, failure-output, and package-content documentation.
 - It puts the linked user documents in generic archives and distribution packages.
 - It adds an automated Simplified Technical English check for tracked documentation.
+- It removes the duplicate action revision table and duplicate image digests from the release security contract.
+- It validates immutable action references in each workflow through one policy check.
+- It groups CodeQL action updates into one dependency update.
 
 ## v2.0.15
 
