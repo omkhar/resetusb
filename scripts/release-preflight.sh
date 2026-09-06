@@ -2,22 +2,15 @@
 
 set -euo pipefail
 
-require_cmd() {
-	command -v "$1" >/dev/null 2>&1 || {
-		echo "$1 not found" >&2
-		exit 1
-	}
-}
+SCRIPT_DIR="$(
+	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
+)"
+BUILDER_ROOT="$(
+	cd -- "${SCRIPT_DIR}/.." && pwd
+)"
 
-validate_image_ref() {
-	local name="$1"
-	local value="$2"
-
-	if [[ ! "${value}" =~ ^[A-Za-z0-9./:@_-]+$ ]]; then
-		echo "Unexpected ${name}: ${value}" >&2
-		exit 1
-	fi
-}
+# shellcheck source=scripts/lib.sh
+source "${SCRIPT_DIR}/lib.sh"
 
 normalize_arch() {
 	local raw="$1"
@@ -49,12 +42,6 @@ resolve_prefight_platform() {
 	printf 'linux/%s\n' "$(normalize_arch "${server_arch}")"
 }
 
-SCRIPT_DIR="$(
-	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
-)"
-BUILDER_ROOT="$(
-	cd -- "${SCRIPT_DIR}/.." && pwd
-)"
 LOCK_FILE="${BUILDER_ROOT}/docker/release-builder.lock"
 SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
 WORK_ROOT="${WORK_ROOT:-${SOURCE_ROOT}}"

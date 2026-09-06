@@ -51,7 +51,6 @@ Shell functions stop their script when a required command, value, file, digest, 
 | `build-release-artifacts.sh: resolve_source_date_epoch` | An explicit time or Git state. | Prints a numeric source time. Requires an explicit value without Git metadata. |
 | `build-release-artifacts.sh: resolve_short_sha` | `GITHUB_SHA` or Git state. | Prints 12 commit characters. Prints `unknown` when neither source is available. |
 | `build-release-artifacts.sh: normalize_tree_timestamps` | A staging tree. | Sets all tree times to `SOURCE_DATE_EPOCH`. |
-| `build-release-artifacts.sh: require_cmd` | A command name. | Requires the command on `PATH`. |
 | `build-release-artifacts.sh: validate_single_line_value` | A name and value. | Rejects empty or multi-line metadata. |
 | `build-release-artifacts.sh: validate_regex_value` | A name, value, and pattern. | Requires single-line metadata that matches the pattern. |
 | `build-release-artifacts.sh: canonicalize_existing_dir` | An absolute directory. | Prints its physical path. |
@@ -73,15 +72,10 @@ Shell functions stop their script when a required command, value, file, digest, 
 | `check-release-security-contract.sh: require_digest_ref` | A file and an image prefix. | Requires a digest-pinned reference with the prefix in the file. |
 | `check-release-security-contract.sh: require_literal_after` | A file, marker, text, and line limit. | Requires the text in the limited section after the marker. |
 | `check-reviewable-pr.sh: require_integer` | A name and value. | Accepts a non-negative integer. |
-| `release-preflight.sh: require_cmd` | A command name. | Requires the command on `PATH`. |
-| `release-preflight.sh: validate_image_ref` | A name and image reference. | Accepts only permitted image-reference characters. |
 | `release-preflight.sh: normalize_arch` | A machine architecture. | Prints `amd64` or `arm64`. Rejects other architectures. |
 | `release-preflight.sh: resolve_prefight_platform` | Docker and host platform data. | Selects a supported Linux builder platform. |
 | `release-preflight.sh: cleanup` | A temporary path. | Removes only the registered preflight file. |
-| `run-package-smoke.sh: require_cmd` | A command name. | Requires the command on `PATH`. |
-| `run-package-smoke.sh: validate_image_ref` | A name and image reference. | Accepts only permitted image-reference characters. |
 | `run-package-smoke.sh: resolve_source_git_sha` | Repository state or `GITHUB_SHA`. | Prints the source commit. Requires `GITHUB_SHA` without Git metadata. |
-| `run-package-smoke.sh: resolve_source_date_epoch` | An explicit time or Git state. | Prints a numeric source time. Requires an explicit value without Git metadata. |
 | `test-package-integration.sh: resolve_arch_platform` | An artifact architecture. | Prints the Docker platform. |
 | `test-package-integration.sh: resolve_deb_arch` | An artifact architecture. | Prints the Debian architecture. |
 | `test-package-integration.sh: resolve_rpm_arch` | An artifact architecture. | Prints the RPM architecture. |
@@ -111,11 +105,12 @@ Shell functions stop their script when a required command, value, file, digest, 
 | `test-package-integration.sh: run_rpm_test` | A target and two artifacts. | Installs and tests one RPM and the `amd64` generic archive. |
 | `test-package-integration.sh: run_rpm_test_with_tarball_mount` | An extracted archive and RPM state. | Runs RPM and archive checks in the selected container. |
 | `test-package-integration.sh: main` | Locked images and artifacts. | Verifies checksums, packages, archives, privilege behavior, and supported platforms. |
-| `verify-release-reproducibility.sh: require_cmd` | A command name. | Requires the command on `PATH`. |
-| `verify-release-reproducibility.sh: resolve_source_date_epoch` | An explicit time or Git state. | Prints a numeric source time. |
 | `verify-release-reproducibility.sh: list_artifacts` | An artifact directory. | Prints a sorted file-name list. |
 | `verify-release-reproducibility.sh: sha256_file` | A file. | Prints its SHA-256 digest with an available checksum command. |
 | `verify-release-reproducibility.sh: compare_artifacts` | Two artifact directories. | Requires equal non-empty file sets and equal digests. |
 | `verify-release-reproducibility.sh: cleanup` | A private reproduction directory. | Removes the registered directory after comparison. |
+| `lib.sh: require_cmd` | A command name. | Requires the command on `PATH`. |
+| `lib.sh: resolve_source_date_epoch` | An explicit time or Git state. | Prints a numeric source time. Requires an explicit value without Git metadata. |
+| `lib.sh: validate_image_ref` | A name and image reference. | Accepts only permitted image-reference characters. |
 
 The scripts also call external commands and container images. [RUNTIMES.md](RUNTIMES.md) identifies the runtime sources.
