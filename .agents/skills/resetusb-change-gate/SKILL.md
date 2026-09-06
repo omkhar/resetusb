@@ -35,8 +35,7 @@ documents, follow the executable checks and the repository documents.
 - Put unrelated work in separate commits or PRs.
 - Preserve Linux-only assumptions and the existing runtime safety messaging.
 - Do not add automatic staging or production deployment jobs in this repository.
-- Do not edit generated `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or `.claude/skills/*` files.
-- Edit the canonical sources. Then run the repository render script.
+- Edit `AGENTS.md` directly. Keep `CLAUDE.md` and `GEMINI.md` as short pointers to it.
 - Remove obsolete code, scripts, or configuration that your change replaces.
 - Before closeout, remove internal notes, local usernames and paths, scratch artifacts, temporary reports, and repository waste from public files.
 
@@ -44,9 +43,8 @@ documents, follow the executable checks and the repository documents.
 
 Run the smallest complete set for the files you changed. Do not skip a required gate.
 
-- Agent control-plane or Codex configuration changes:
-  `make verify-agent-control-plane`, `make check-public-surface`, and
-  `make lint`
+- Agent instruction or Codex configuration changes:
+  `make check-public-surface` and `make lint`
 - C source or unit-test changes: `make clean && make`, `make test`,
   `make check-format`, `make lint`
 - Output, sanitization, or boundary-sensitive changes: `make sanitize`
@@ -56,8 +54,6 @@ Run the smallest complete set for the files you changed. Do not skip a required 
 
 ## Control Plane
 
-- Canonical shared instructions: `agent-control-plane/project-instructions.md`
+- Canonical shared instructions: `AGENTS.md`
 - Canonical shared skills: `.agents/skills/`
-- The repository render script writes the Claude mirror to `.claude/skills/`.
-- After you edit canonical sources, run:
-  `python3 scripts/render-agent-control-plane.py`
+- `.claude/skills` is a symbolic link to `.agents/skills`.

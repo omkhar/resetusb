@@ -104,14 +104,13 @@ make release-preflight
 
 ## Agent Control Plane
 
-This repository ships generated `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md`
-files for Codex, Claude, and Gemini.
+`AGENTS.md` contains the canonical shared agent instructions. `CLAUDE.md`
+and `GEMINI.md` are short pointers to it.
 
-Canonical shared skills live in `.agents/skills/`. Generated Claude mirrors
-live in `.claude/skills/`.
+Canonical shared skills live in `.agents/skills/`. `.claude/skills` is a
+symbolic link to `.agents/skills`.
 
-If you edit a canonical agent file, run the repository render script.
-Then run `make lint`.
+If you edit an agent file, run `make lint`.
 
 Keep agent-facing content public-repo safe: do not add internal-only notes,
 local paths, usernames, scratch artifacts, or other repository detritus.

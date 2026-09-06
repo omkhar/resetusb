@@ -39,8 +39,7 @@ MAN8DIR ?= $(MANDIR)/man8
 UNAME_S := $(shell uname -s)
 
 .PHONY: all clean install uninstall test lint format check-format sanitize \
-	fuzz release-preflight check-release-contract agent-control-plane \
-	verify-agent-control-plane check-public-surface check-fuzzer-compile
+	fuzz release-preflight check-release-contract check-public-surface check-fuzzer-compile
 
 ifeq ($(UNAME_S),Linux)
 EFFECTIVE_CFLAGS := $(CFLAGS) $(EXTRA_WARN_CFLAGS) $(HARDEN_CFLAGS)
@@ -131,7 +130,6 @@ lint:
 	@actionlint_version="$$(actionlint -version | sed -n '1p' | sed 's/^v//')"; \
 	"$(PYTHON)" scripts/check-actionlint-version.py "$${actionlint_version}"
 	actionlint
-	$(PYTHON) scripts/render-agent-control-plane.py --check
 	$(PYTHON) scripts/check-documentation-style.py
 	./scripts/check-public-surface.sh
 	./scripts/test-codeql-action-pair.sh
@@ -141,12 +139,6 @@ lint:
 check-release-contract:
 	./scripts/test-codeql-action-pair.sh
 	./scripts/check-release-security-contract.sh
-
-agent-control-plane:
-	$(PYTHON) scripts/render-agent-control-plane.py
-
-verify-agent-control-plane:
-	$(PYTHON) scripts/render-agent-control-plane.py --check
 
 check-public-surface:
 	./scripts/check-public-surface.sh

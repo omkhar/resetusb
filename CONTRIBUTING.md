@@ -36,12 +36,11 @@ Install PyYAML 6.0 or newer for the Python 3 interpreter that runs `make lint`.
 
 ## Agent Control Plane
 
-- The repository render script generates `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md`.
-- Do not edit these files manually.
+- `AGENTS.md` contains the canonical shared agent instructions.
+- Edit `AGENTS.md` directly. Keep `CLAUDE.md` and `GEMINI.md` as short pointers to it.
 - Canonical shared skills live in `.agents/skills/`.
-- The repository render script writes the Claude skill mirror to `.claude/skills/`.
-- After you edit a canonical agent file, run `python3 scripts/render-agent-control-plane.py`.
-- Then run `make lint`.
+- `.claude/skills` is a symbolic link to `.agents/skills`.
+- After you edit an agent file, run `make lint`.
 - Before you open a PR, remove internal notes, local paths, usernames, scratch artifacts, and repository waste from public files.
 
 ## Before Opening a PR
