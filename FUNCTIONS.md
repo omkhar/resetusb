@@ -108,13 +108,12 @@ Shell functions stop their script when a required command, value, file, digest, 
 | `test-package-integration.sh: with_extracted_tarball` | An archive and callback. | Extracts the archive in a private directory and runs the callback. |
 | `test-package-integration.sh: discover_artifact_version` | The distribution directory. | Prints the one version shared by all expected artifacts. |
 | `test-codeql-action-pair.sh: cleanup` | No arguments. | Removes the temporary fixture directory. |
-| `test-codeql-action-pair.sh: expect_pass` | A name and a steps file. | Wraps the steps in a workflow and requires the checker to pass. |
-| `test-codeql-action-pair.sh: expect_fail` | A name and a steps file. | Wraps the steps in a workflow and requires the checker to fail. |
-| `test-codeql-action-pair.sh: expect_steps` | A mode, a name, and step lines. | Writes the step lines to a fixture and runs the pass or fail check. |
 | `test-codeql-action-pair.sh: run_checker` | A workflow file. | Validates the fixture with `actionlint` and runs the workflow action policy check. |
-| `test-codeql-action-pair.sh: expect_workflow_pass` | A name and a workflow file. | Validates the fixture with `actionlint` and requires the checker to pass. |
-| `test-codeql-action-pair.sh: expect_workflow_fail` | A name and a workflow file. | Validates the fixture with `actionlint` and requires the checker to fail. |
 | `test-codeql-action-pair.sh: wrap_fixture` | A steps file and an output path. | Writes a complete workflow around the step lines. |
+| `test-codeql-action-pair.sh: expect_workflow_result` | A mode, a name, and a workflow file. | Validates the fixture with `actionlint` and requires the checker to match the mode. |
+| `test-codeql-action-pair.sh: expect_steps` | A mode, a name, and step lines. | Writes the step lines to a fixture, wraps it in a workflow, and runs the mode check. |
+| `test-codeql-action-pair.sh: expect_workflow` | A mode, a name, and workflow lines. | Writes a complete workflow fixture and runs the mode check. |
+| `test-codeql-action-pair.sh: must_fail` | A name and a workflow file. | Requires the checker to fail on the fixture. |
 | `test-package-integration.sh: artifact_path` | An artifact name. | Prints its path below the distribution directory. |
 | `test-package-integration.sh: require_artifact` | An artifact path. | Requires the artifact file. |
 | `test-package-integration.sh: verify_artifact_checksum` | An artifact. | Requires its checksum file and verifies the digest. |
