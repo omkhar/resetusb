@@ -14,6 +14,7 @@ This document uses ASD-STE100 Simplified Technical English.
 - It makes `AGENTS.md` the canonical agent instruction file and removes the agent document render script.
 - It changes `CLAUDE.md` and `GEMINI.md` to short pointers and changes `.claude/skills` to a symbolic link.
 - It removes the internal operations-table completeness guard, the duplicate root `CODEOWNERS` file, and a duplicate Makefile compiler block.
+- It moves duplicated shell helper functions into one sourced library file.
 
 ## v2.0.15
 

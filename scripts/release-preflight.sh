@@ -2,22 +2,15 @@
 
 set -euo pipefail
 
-require_cmd() {
-	command -v "$1" >/dev/null 2>&1 || {
-		echo "$1 not found" >&2
-		exit 1
-	}
-}
+SCRIPT_DIR="$(
+	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
+)"
+BUILDER_ROOT="$(
+	cd -- "${SCRIPT_DIR}/.." && pwd
+)"
 
-validate_image_ref() {
-	local name="$1"
-	local value="$2"
-
-	if [[ ! "${value}" =~ ^[A-Za-z0-9./:@_-]+$ ]]; then
-		echo "Unexpected ${name}: ${value}" >&2
-		exit 1
-	fi
-}
+# shellcheck source=scripts/lib.sh
+source "${SCRIPT_DIR}/lib.sh"
 
 normalize_arch() {
 	local raw="$1"
@@ -49,12 +42,6 @@ resolve_prefight_platform() {
 	printf 'linux/%s\n' "$(normalize_arch "${server_arch}")"
 }
 
-SCRIPT_DIR="$(
-	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
-)"
-BUILDER_ROOT="$(
-	cd -- "${SCRIPT_DIR}/.." && pwd
-)"
 LOCK_FILE="${BUILDER_ROOT}/docker/release-builder.lock"
 SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
 WORK_ROOT="${WORK_ROOT:-${SOURCE_ROOT}}"
@@ -110,6 +97,11 @@ preflight_docker_args=(
 	--user "${CONTAINER_UID_GID}"
 	-v "${SOURCE_ROOT}:/source"
 	-w /source
+	# Docker Desktop can present the bind mount with a different owner
+	# than the container user. Mark the mount safe for every git call.
+	-e GIT_CONFIG_COUNT=1
+	-e GIT_CONFIG_KEY_0=safe.directory
+	-e GIT_CONFIG_VALUE_0=/source
 )
 if [[ -f "${SOURCE_ROOT}/.git" ]]; then
 	preflight_docker_args+=(-v "${git_common_dir}:${git_common_dir}:ro")
@@ -207,6 +199,9 @@ gitleaks_docker_args=(
 	-v "${SOURCE_ROOT}:/repo:ro"
 	-w /repo
 	--entrypoint /bin/sh
+	-e GIT_CONFIG_COUNT=1
+	-e GIT_CONFIG_KEY_0=safe.directory
+	-e GIT_CONFIG_VALUE_0=/repo
 )
 if [[ -f "${SOURCE_ROOT}/.git" ]]; then
 	gitleaks_docker_args+=(-v "${git_common_dir}:${git_common_dir}:ro")

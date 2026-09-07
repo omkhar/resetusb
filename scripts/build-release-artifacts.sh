@@ -138,13 +138,6 @@ readonly -a RELEASE_DOCUMENTS=(
 	RUNTIMES.md
 )
 
-require_cmd() {
-	command -v "$1" >/dev/null 2>&1 || {
-		echo "$1 not found" >&2
-		exit 1
-	}
-}
-
 validate_single_line_value() {
 	local name="$1"
 	local value="$2"
@@ -543,6 +536,17 @@ write_checksums() {
 }
 
 main() {
+	# check-documentation-contract.sh runs a truncated copy of this script
+	# (everything from expect_non_root_error() onward is cut) as a
+	# self-test, via `bash <(sed ... )`. Under process substitution
+	# BASH_SOURCE resolves to a /dev/fd (or /proc/self/fd) path, so a
+	# SCRIPT_DIR-relative source at the top of the file cannot find
+	# lib.sh there. Sourcing it here, after the truncation point, keeps
+	# that self-test exercising the real validation logic above instead
+	# of failing on a missing file.
+	# shellcheck source=scripts/lib.sh
+	source "${SCRIPT_DIR}/lib.sh"
+
 	require_cmd dpkg-deb
 	require_cmd gzip
 	require_cmd make

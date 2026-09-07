@@ -2,32 +2,6 @@
 
 set -euo pipefail
 
-require_cmd() {
-	command -v "$1" >/dev/null 2>&1 || {
-		echo "$1 not found" >&2
-		exit 1
-	}
-}
-
-resolve_source_date_epoch() {
-	if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
-		if [[ ! "${SOURCE_DATE_EPOCH}" =~ ^[0-9]+$ ]]; then
-			echo "SOURCE_DATE_EPOCH must be an integer" >&2
-			exit 1
-		fi
-		printf '%s\n' "${SOURCE_DATE_EPOCH}"
-		return
-	fi
-
-	if git -C "${SOURCE_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-		git -C "${SOURCE_ROOT}" log -1 --format=%ct HEAD
-		return
-	fi
-
-	echo "SOURCE_DATE_EPOCH is required when git metadata is unavailable" >&2
-	exit 1
-}
-
 list_artifacts() {
 	local dir="$1"
 
@@ -102,6 +76,9 @@ SOURCE_ROOT="${SOURCE_ROOT:-${BUILDER_ROOT}}"
 DIST_DIR="${DIST_DIR:-${SOURCE_ROOT}/dist}"
 BUILDER_IMAGE="${BUILDER_IMAGE:-resetusb-release-builder:preflight}"
 CONTAINER_UID_GID="$(id -u):$(id -g)"
+
+# shellcheck source=scripts/lib.sh
+source "${SCRIPT_DIR}/lib.sh"
 
 require_cmd docker
 require_cmd find
