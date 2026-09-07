@@ -15,6 +15,9 @@ This document uses ASD-STE100 Simplified Technical English.
 - It changes `CLAUDE.md` and `GEMINI.md` to short pointers and changes `.claude/skills` to a symbolic link.
 - It removes the internal operations-table completeness guard, the duplicate root `CODEOWNERS` file, and a duplicate Makefile compiler block.
 - It moves duplicated shell helper functions into one sourced library file.
+- It updates the pinned CodeQL, Scorecard, zizmor, attest, QEMU, and SBOM actions to their current releases.
+- It updates cosign to v3.1.3, Syft to v1.51.1, and Go to 1.27.1.
+- It adds a scoped zizmor exception for the release workflow call until actionlint accepts the self-repository syntax.
 
 ## v2.0.15
 

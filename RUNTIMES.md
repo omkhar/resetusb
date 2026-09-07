@@ -33,7 +33,7 @@ This document uses ASD-STE100 Simplified Technical English.
 - The trusted builder uses the Debian snapshot at `20260721T000000Z`.
 - `docker/release-builder.lock` contains the base-image digest, snapshot time, and snapshot `InRelease` digest.
 - CI compiles with GCC and Clang from the locked Debian snapshot.
-- Repository security automation uses Go 1.26.5.
+- Repository security automation uses Go 1.27.1.
 - The `resetusb` executable does not need Go.
 - Secret scans use Gitleaks 8.30.1.
 - Release workflows use Cosign 3.1.2 and Syft 1.49.0.
