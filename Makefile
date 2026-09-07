@@ -101,6 +101,12 @@ check-format:
 		{ echo "$(CLANG_FORMAT) not found" >&2; exit 1; }
 	$(CLANG_FORMAT) --dry-run --Werror $(FORMAT_SRCS)
 
+# Containerized runs can present the checkout with a different owner than
+# the lint user. Mark it safe so the git-based checks run everywhere.
+lint: export GIT_CONFIG_COUNT := 1
+lint: export GIT_CONFIG_KEY_0 := safe.directory
+lint: export GIT_CONFIG_VALUE_0 := *
+
 lint:
 	@command -v cppcheck >/dev/null 2>&1 || \
 		{ echo "cppcheck not found" >&2; exit 1; }
@@ -123,9 +129,11 @@ lint:
 	"$(PYTHON)" scripts/check-actionlint-version.py "$${actionlint_version}"
 	actionlint
 	$(PYTHON) scripts/render-agent-control-plane.py --check
+	$(PYTHON) scripts/check-documentation-style.py
 	./scripts/check-public-surface.sh
 	./scripts/test-codeql-action-pair.sh
 	./scripts/check-release-security-contract.sh
+	./scripts/check-documentation-contract.sh
 
 check-release-contract:
 	./scripts/test-codeql-action-pair.sh

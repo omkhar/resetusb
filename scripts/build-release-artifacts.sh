@@ -133,6 +133,7 @@ declare -A ARCH_QEMU=(
 
 readonly -a RELEASE_DOCUMENTS=(
 	README.md
+	FUNCTIONS.md
 	LIMITATIONS.md
 	RUNTIMES.md
 )
@@ -248,7 +249,10 @@ validate_cleanup_dir() {
 			echo "${name} must not point at a cleanup root: ${canonical}" >&2
 			exit 1
 		fi
+	done
 
+	for allowed_root in "${SOURCE_ROOT_CANON}" "${TMP_ROOT_CANON}" \
+		"${SYSTEM_TMP_ROOT_CANON}"; do
 		if [[ "${canonical}" == "${allowed_root}"/* ]]; then
 			return
 		fi
@@ -459,10 +463,11 @@ URL: ${HOMEPAGE}
 Requires: libusb1
 Source0: resetusb
 Source1: README.md
-Source2: LIMITATIONS.md
-Source3: RUNTIMES.md
-Source4: LICENSE
-Source5: resetusb.8
+Source2: FUNCTIONS.md
+Source3: LIMITATIONS.md
+Source4: RUNTIMES.md
+Source5: LICENSE
+Source6: resetusb.8
 
 %description
 resetusb enumerates USB devices and issues resets for operational recovery
@@ -476,14 +481,16 @@ controlled maintenance windows.
 %install
 install -D -m 0755 %{SOURCE0} %{buildroot}%{_sbindir}/resetusb
 install -D -m 0644 %{SOURCE1} %{buildroot}%{_docdir}/resetusb/README.md
-install -D -m 0644 %{SOURCE2} %{buildroot}%{_docdir}/resetusb/LIMITATIONS.md
-install -D -m 0644 %{SOURCE3} %{buildroot}%{_docdir}/resetusb/RUNTIMES.md
-install -D -m 0644 %{SOURCE4} %{buildroot}%{_licensedir}/resetusb/LICENSE
-install -D -m 0644 %{SOURCE5} %{buildroot}%{_mandir}/man8/resetusb.8
+install -D -m 0644 %{SOURCE2} %{buildroot}%{_docdir}/resetusb/FUNCTIONS.md
+install -D -m 0644 %{SOURCE3} %{buildroot}%{_docdir}/resetusb/LIMITATIONS.md
+install -D -m 0644 %{SOURCE4} %{buildroot}%{_docdir}/resetusb/RUNTIMES.md
+install -D -m 0644 %{SOURCE5} %{buildroot}%{_licensedir}/resetusb/LICENSE
+install -D -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man8/resetusb.8
 
 %files
 %license %{_licensedir}/resetusb/LICENSE
 %doc %{_docdir}/resetusb/README.md
+%doc %{_docdir}/resetusb/FUNCTIONS.md
 %doc %{_docdir}/resetusb/LIMITATIONS.md
 %doc %{_docdir}/resetusb/RUNTIMES.md
 %{_mandir}/man8/resetusb.8*
