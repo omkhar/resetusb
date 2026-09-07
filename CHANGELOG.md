@@ -17,6 +17,7 @@ This document uses ASD-STE100 Simplified Technical English.
 - It moves duplicated shell helper functions into one sourced library file.
 - It updates the pinned CodeQL, Scorecard, zizmor, attest, QEMU, and SBOM actions to their current releases.
 - It updates cosign to v3.1.3, Syft to v1.51.1, and Go to 1.27.1.
+- It adds a scoped zizmor exception for the release workflow call until actionlint accepts the self-repository syntax.
 
 ## v2.0.15
 

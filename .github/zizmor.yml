@@ -1,0 +1,10 @@
+# Scoped audit exception.
+#
+# zizmor v0.6.3 recommends the dedicated "$/..." self-repository syntax for
+# the reusable workflow call in release.yml. actionlint v1.7.12 (the current
+# release) rejects that syntax, so the repository keeps the "./..." form.
+# Remove this exception when actionlint accepts the dedicated syntax.
+rules:
+  self-repository:
+    ignore:
+      - release.yml
