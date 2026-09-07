@@ -88,7 +88,7 @@ for text in \
 	"${markdown_code_delimiter}<string unavailable>${markdown_code_delimiter}" \
 	"internal test seam" \
 	"returns 1 without output when an output stream pointer is null" \
-	"returns 1 when the operations table is null or incomplete" \
+	"requires a complete operations table and does not validate it" \
 	"Exit status 0 requires successful initialization, enumeration, and all device-specific operations" \
 	"A descriptor, open, null-handle, or reset failure causes exit status 1" \
 	"does not install ${markdown_code_delimiter}resetusb.h${markdown_code_delimiter}"; do

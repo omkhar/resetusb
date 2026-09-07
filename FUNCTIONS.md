@@ -8,7 +8,6 @@ This reference describes each non-test function in the program and repository au
 
 | Function | Input | Result and failure |
 | --- | --- | --- |
-| `ops_complete` | A `resetusb_ops` pointer. | Returns true only when the pointer and all required callbacks are non-null. |
 | `safe_error_name` | An operations table and a `libusb` error code. | Returns callback text. Returns `unknown` when the callback returns null. |
 | `error_code_from_ssize` | A signed device-list result. | Converts the value to `int`. Returns `LIBUSB_ERROR_OTHER` when the value is outside the `int` range. |
 | `sanitize_product_name` | A null-terminated product-name buffer. | Changes each non-printable byte to `?`. A null pointer has no effect. |

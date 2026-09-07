@@ -53,8 +53,7 @@ This document uses ASD-STE100 Simplified Technical English.
 - `resetusb_run` and `resetusb_ops` are an internal test seam.
 - They are not a stable library interface.
 - `resetusb_run` returns 1 without output when an output stream pointer is null.
-- `resetusb_run` returns 1 when the operations table is null or incomplete.
-- With two non-null streams, an incomplete operations table writes an internal error.
+- `resetusb_run` requires a complete operations table and does not validate it.
 - The install target installs the executable and the manual page. It does not install `resetusb.h`.
 - Generic archives need the system `libusb-1.0` shared library.
 

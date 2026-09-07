@@ -511,29 +511,6 @@ static void test_reset_failure_closes_handle(void)
 	free(err);
 }
 
-static void test_incomplete_ops_table_rejected(void)
-{
-	reset_fake();
-
-	resetusb_ops bad_ops = fake_ops;
-	bad_ops.libusb_reset_device = NULL;
-
-	char *out = NULL;
-	char *err = NULL;
-	int rc = run_with_capture(&bad_ops, 0, 0, &out, &err);
-
-	assert(rc == 1);
-	assert(g_fake.init_calls == 0);
-	assert(out != NULL && strcmp(out, "") == 0);
-	assert(err != NULL &&
-	       strstr(err,
-		      "Internal error: incomplete libusb operations table") !=
-		       NULL);
-
-	free(out);
-	free(err);
-}
-
 static void test_product_name_sanitized(void)
 {
 	reset_fake();
@@ -678,8 +655,6 @@ int main(void)
 	run_test("mixed_failures_counted", test_mixed_failures_counted);
 	run_test("reset_failure_closes_handle",
 		 test_reset_failure_closes_handle);
-	run_test("incomplete_ops_table_rejected",
-		 test_incomplete_ops_table_rejected);
 	run_test("no_product_string_uses_unknown",
 		 test_no_product_string_uses_unknown);
 	run_test("zero_length_product_string_unavailable",
