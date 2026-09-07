@@ -40,7 +40,7 @@ UNAME_S := $(shell uname -s)
 
 .PHONY: all clean install uninstall test lint format check-format sanitize \
 	fuzz release-preflight check-release-contract agent-control-plane \
-	verify-agent-control-plane check-public-surface
+	verify-agent-control-plane check-public-surface check-fuzzer-compile
 
 ifeq ($(UNAME_S),Linux)
 EFFECTIVE_CFLAGS := $(CFLAGS) $(EXTRA_WARN_CFLAGS) $(HARDEN_CFLAGS)
@@ -62,7 +62,10 @@ $(FUZZ_BIN): $(FUZZ_SRC) resetusb.c resetusb.h
 	$(FUZZ_CC) $(CPPFLAGS) $(CFLAGS) -O1 -g3 -fno-omit-frame-pointer \
 		-fsanitize=fuzzer,address,undefined -o $@ $(FUZZ_SRC)
 
-test: resetusb $(UNIT_TEST_BIN)
+check-fuzzer-compile:
+	$(CC) $(CPPFLAGS) $(CFLAGS) -fsyntax-only $(FUZZ_SRC)
+
+test: resetusb $(UNIT_TEST_BIN) check-fuzzer-compile
 	./$(UNIT_TEST_BIN)
 
 sanitize: clean
