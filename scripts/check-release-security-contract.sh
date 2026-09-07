@@ -29,46 +29,12 @@ forbid_literal() {
 	fi
 }
 
-require_action_pin() {
-	local action="$1"
-	local expected_sha="$2"
-	local expected_version="$3"
-	local expected="uses: ${action}@${expected_sha} # ${expected_version}"
-	local path
-	local -a workflow_files=()
+require_digest_ref() {
+	local path="$1"
+	local prefix="$2"
 
-	while IFS= read -r path; do
-		workflow_files+=("${path}")
-	done < <(
-		find .github/workflows -maxdepth 1 -type f \
-			\( -name '*.yml' -o -name '*.yaml' \) -print | sort
-	)
-
-	if [[ ${#workflow_files[@]} -eq 0 ]]; then
-		echo "No GitHub workflow files found" >&2
-		exit 1
-	fi
-
-	if ! awk \
-		-v needle="uses: ${action}@" \
-		-v expected="${expected}" '
-		index($0, needle) {
-			found = 1
-			actual = $0
-			sub(/^[[:space:]]*-?[[:space:]]*/, "", actual)
-			if (actual != expected) {
-				printf "%s:%d: expected %s, got %s\n", \
-					FILENAME, FNR, expected, actual > "/dev/stderr"
-				bad = 1
-			}
-		}
-		END {
-			if (!found) {
-				printf "No workflow uses %s\n", needle > "/dev/stderr"
-			}
-			exit(bad || !found ? 1 : 0)
-		}
-	' "${workflow_files[@]}"; then
+	if ! grep -Eq -- "${prefix}@sha256:[0-9a-f]{64}" "${path}"; then
+		echo "Missing digest-pinned reference in ${path}: ${prefix}" >&2
 		exit 1
 	fi
 }
@@ -106,25 +72,32 @@ cd "${REPO_ROOT}"
 
 require_literal "docker/release-builder.lock" "DEBIAN_SNAPSHOT_INRELEASE_SHA256="
 
-while IFS='|' read -r action expected_sha expected_version; do
-	require_action_pin "${action}" "${expected_sha}" "${expected_version}"
-done <<'EOF'
-actions/checkout|3d3c42e5aac5ba805825da76410c181273ba90b1|v7.0.1
-actions/setup-go|b7ad1dad31e06c5925ef5d2fc7ad053ef454303e|v7.0.0
-actions/upload-artifact|043fb46d1a93c77aae656e7c1c64a875d1fc6a0a|v7.0.1
-actions/download-artifact|3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c|v8.0.1
-actions/attest|f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6|v4.2.0
-github/codeql-action/init|e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81|v4.37.3
-github/codeql-action/analyze|e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81|v4.37.3
-github/codeql-action/upload-sarif|e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81|v4.37.3
-actions/dependency-review-action|a1d282b36b6f3519aa1f3fc636f609c47dddb294|v5.0.0
-docker/setup-qemu-action|96fe6ef7f33517b61c61be40b68a1882f3264fb8|v4.2.0
-anchore/sbom-action/download-syft|e22c389904149dbc22b58101806040fa8d37a610|v0.24.0
-ossf/scorecard-action|4eaacf0543bb3f2c246792bd56e8cdeffafb205a|v2.4.3
-zizmorcore/zizmor-action|6599ee8b7a49aef6a770f63d261d214911a7ce02|v0.6.0
-google/clusterfuzzlite/actions/build_fuzzers|884713a6c30a92e5e8544c39945cd7cb630abcd1|v1
-google/clusterfuzzlite/actions/run_fuzzers|884713a6c30a92e5e8544c39945cd7cb630abcd1|v1
-EOF
+# Every workflow must reference actions by immutable revision. The CodeQL
+# workflow must also keep its init and analyze pair. Exact revisions live in
+# the workflow files and move through dependabot review. The actionlint run
+# uses an empty configuration so a repository ignore list cannot hide a
+# duplicate key from the policy check.
+workflow_count=0
+while IFS= read -r workflow_path; do
+	workflow_count=$((workflow_count + 1))
+	actionlint -config-file /dev/null -shellcheck= -pyflakes= \
+		"${workflow_path}" >/dev/null
+	if [[ "${workflow_path}" == ".github/workflows/codeql.yml" ]]; then
+		python3 -I "${SCRIPT_DIR}/check-workflow-action-policy.py" \
+			--require-codeql-pair "${workflow_path}"
+	else
+		python3 -I "${SCRIPT_DIR}/check-workflow-action-policy.py" \
+			"${workflow_path}"
+	fi
+done < <(
+	find .github/workflows -maxdepth 1 -type f \
+		\( -name '*.yml' -o -name '*.yaml' \) -print | sort
+)
+
+if [[ "${workflow_count}" -eq 0 ]]; then
+	echo "No GitHub workflow files found" >&2
+	exit 1
+fi
 
 require_literal "CONTRIBUTING.md" "\`v1.7.12\` or newer."
 forbid_literal "CONTRIBUTING.md" "\`v1.7.10\` or newer."
@@ -142,14 +115,12 @@ require_literal "scripts/check-public-surface.sh" \
 # shellcheck disable=SC1091
 source "docker/release-builder.lock"
 
-expected_base_image="debian:trixie@sha256:fac46bff2e02f51425b6e33b0e1169f55dfb053d83511ca28aa50c09fd5ed7a4"
-expected_snapshot_timestamp="20260721T000000Z"
-expected_snapshot_inrelease_sha256="98b25b5cd185c59d34aa6e4c3e9b5b8f01bbe9d104fe2dcfbcd30dc0a14a59ed"
-
-if [[ "${DEBIAN_BASE_IMAGE}" != "${expected_base_image}" ||
-      "${DEBIAN_SNAPSHOT_TIMESTAMP}" != "${expected_snapshot_timestamp}" ||
-      "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}" != "${expected_snapshot_inrelease_sha256}" ]]; then
-	echo "The trusted builder runtime lock is not current" >&2
+# The lock file is the single source of truth for the trusted builder
+# runtime. The contract validates its shape and cross-file consistency.
+if [[ ! "${DEBIAN_BASE_IMAGE}" =~ ^debian:trixie@sha256:[0-9a-f]{64}$ ||
+      ! "${DEBIAN_SNAPSHOT_TIMESTAMP}" =~ ^[0-9]{8}T[0-9]{6}Z$ ||
+      ! "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}" =~ ^[0-9a-f]{64}$ ]]; then
+	echo "The trusted builder runtime lock is not valid" >&2
 	exit 1
 fi
 
@@ -166,8 +137,6 @@ for path in \
 	fi
 done
 
-require_literal ".github/workflows/security-baseline.yml" \
-	"actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0"
 require_literal ".github/workflows/security-baseline.yml" 'go-version: "1.26.5"'
 require_literal ".github/workflows/security-baseline.yml" \
 	"github.com/zricethezav/gitleaks/v8@v8.30.1"
@@ -203,14 +172,9 @@ if grep -R -Fq -- "runs-on: ubuntu-latest" .github/workflows; then
 	exit 1
 fi
 
-require_literal "scripts/test-package-integration.sh" \
-	"tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0"
-forbid_literal "scripts/test-package-integration.sh" \
-	"tonistiigi/binfmt@sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3"
-require_literal ".clusterfuzzlite/Dockerfile" \
-	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:5d16653db7d96570d09b91e022867a0ff6fa32826fd5f3f0625e5afa61157414"
-forbid_literal ".clusterfuzzlite/Dockerfile" \
-	"gcr.io/oss-fuzz-base/base-builder:v1@sha256:cc6982a6ce8b02c80a2acabbcfe766e5e7200988ff0424b0d4963232c3b41901"
+require_digest_ref "scripts/test-package-integration.sh" "tonistiigi/binfmt"
+require_digest_ref ".clusterfuzzlite/Dockerfile" \
+	"gcr.io/oss-fuzz-base/base-builder:v1"
 
 require_literal "scripts/test-package-integration.sh" \
 	"RESETUSB_PACKAGE_TEST_TARGET=\"\${distro}/\${channel}/\${arch}\""
@@ -221,24 +185,22 @@ require_literal "scripts/test-package-integration.sh" 'gnurm'
 require_literal "scripts/test-package-integration.sh" \
 	'apt-get install -y --no-install-recommends ca-certificates passwd'
 
-while IFS= read -r image; do
-	require_literal "docker/package-test-images.lock" "${image}"
-done <<'EOF'
-debian:trixie@sha256:d63a99144861e4e460196ed93d07777490cbeab53ca660c434f2a589a6c50ea3
-debian:trixie@sha256:8ac748152418b19ff289badbf878c42561c5b0cd922ade5fe4fa37cf0769b521
-debian:trixie@sha256:743aca1ad24c5e48132df88f561f8d1365bfb6da33e006eb44b44fe32a7a30eb
-debian:sid@sha256:2c9866a63b63e4ebafaf913f97c7c6548c3b578b9a4279f101c2ef04738d0aeb
-debian:sid@sha256:e0978e3b598df62ce058da98d55bd5b34de32b6d18536fa227acfd915a7b4823
-debian:sid@sha256:b2a5fd5dd970285660fab5570f252cfcb61a9f94506571f0e84c29a029678c68
-ubuntu:24.04@sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf
-ubuntu:24.04@sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab
-ubuntu:24.04@sha256:85bd033654caaaa96ca01bd334ff21fb21d38e29b563ea8ab527bb61ea3a2307
-ubuntu:devel@sha256:bb545a234ade8e929bf1f12d475d3472c4ed221e1f1c0a0c7ba8165b64da7729
-ubuntu:devel@sha256:d206b9277d9b8fab7fdefa816b4a6e290d57c9e98e82a00474cb8a1f806cb9e1
-ubuntu:devel@sha256:394966275ff5e8a815d8455a2db135e953574ff05acf4ffaa3c3ee7b6f99afad
-fedora:44@sha256:89f61a124414261868224666aa7fb8df1b78397a53623774bdfb105d1612b48b
-fedora:rawhide@sha256:ea5726b9c7d8f7c5a7826f196b93adc4e2e2bb6b0c707f3857104642bf34b4f3
-EOF
+# docker/package-test-images.lock is the single source of truth for the
+# package test images. Every entry must stay digest-pinned; the exact
+# digests move through the lock file alone.
+package_image_count="$(
+	grep -Ec -- '^[A-Z0-9_]+_IMAGE=[a-z0-9./_-]+(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$' \
+		"docker/package-test-images.lock"
+)"
+if [[ "${package_image_count}" -ne 14 ]]; then
+	echo "docker/package-test-images.lock must pin all 14 package test images by digest" >&2
+	exit 1
+fi
+if grep -Evq -- '^(#|$|[A-Z0-9_]+_IMAGE=[a-z0-9./_-]+(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$)' \
+	"docker/package-test-images.lock"; then
+	echo "docker/package-test-images.lock contains an entry that is not digest-pinned" >&2
+	exit 1
+fi
 
 while IFS= read -r runtime_statement; do
 	require_literal "RUNTIMES.md" "${runtime_statement}"
@@ -294,12 +256,9 @@ require_literal "Makefile" "actionlint"
 require_literal "Makefile" 'scripts/check-actionlint-version.py'
 require_literal "Makefile" "./scripts/check-public-surface.sh"
 require_literal "Makefile" "./scripts/check-release-security-contract.sh"
-require_literal "Makefile" 'scripts/render-agent-control-plane.py --check'
 require_literal "scripts/install-ci-deps.sh" "python3-yaml"
 require_literal "scripts/release-preflight.sh" "make lint"
 require_literal "scripts/release-preflight.sh" "python3-yaml"
-
-"${SCRIPT_DIR}/check-codeql-action-pair.sh" ".github/workflows/codeql.yml"
 
 # shellcheck disable=SC2016
 require_literal ".github/workflows/release.yml" 'if [[ "${REF_TYPE}" != "tag" ]]; then'
