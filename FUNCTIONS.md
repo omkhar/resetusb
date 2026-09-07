@@ -37,16 +37,6 @@ This reference describes each non-test function in the program and repository au
 | `check-workflow-action-policy.py: check_workflow` | A workflow path and a pair requirement. | Validates each action reference. Validates the CodeQL phase pair when required or present. A violation stops the check. |
 | `check-workflow-action-policy.py: main` | An optional pair flag and one workflow argument. | Returns 0 for a valid workflow, 1 for a violation, and 2 for incorrect use. |
 | `release-builder.yml: load_builder_lock` | The release-builder lock path. | Returns valid key-value entries. It ignores blank lines and comments. An invalid entry stops the workflow step. |
-| `render-agent-control-plane.py: build_agent_doc` | A file name, skill path, and shared text. | Returns one generated agent document. |
-| `render-agent-control-plane.py: write_if_changed` | A path and text. | Writes changed text and returns true. Returns false when text is equal. |
-| `render-agent-control-plane.py: collect_tree` | A directory. | Returns file data by relative path. A missing directory gives an empty map. |
-| `render-agent-control-plane.py: expected_agent_docs` | No arguments. | Returns the expected generated agent documents. A read error stops the script. |
-| `render-agent-control-plane.py: expected_claude_skill_payload` | No arguments. | Returns the canonical skill tree for the Claude mirror. |
-| `render-agent-control-plane.py: validate_canonical_inputs` | No arguments. | Stops when required instructions or the required skill are missing or empty. |
-| `render-agent-control-plane.py: render` | No arguments. | Writes generated agent documents, replaces the Claude skill mirror, and returns changed paths. |
-| `render-agent-control-plane.py: check` | No arguments. | Returns 0 when generated files match. Returns 1 and reports each mismatch otherwise. |
-| `render-agent-control-plane.py: parse_args` | Process arguments. | Returns the parsed `--check` state. Invalid arguments stop through `argparse`. |
-| `render-agent-control-plane.py: main` | Process arguments. | Selects check or render mode and returns its status. |
 | `validate-release-manifest.py: fail` | Error text. | Stops validation with the text. |
 | `validate-release-manifest.py: require` | A condition and error text. | Has no result when true. Calls `fail` when false. |
 | `validate-release-manifest.py: sha256_file` | A file path. | Returns the SHA-256 digest. A read error stops validation. |

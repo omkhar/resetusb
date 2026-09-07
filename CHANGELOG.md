@@ -11,6 +11,8 @@ This document uses ASD-STE100 Simplified Technical English.
 - It removes the duplicate action revision table and duplicate image digests from the release security contract.
 - It validates immutable action references in each workflow through one policy check.
 - It groups CodeQL action updates into one dependency update.
+- It makes `AGENTS.md` the canonical agent instruction file and removes the agent document render script.
+- It changes `CLAUDE.md` and `GEMINI.md` to short pointers and changes `.claude/skills` to a symbolic link.
 
 ## v2.0.15
 

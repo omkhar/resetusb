@@ -34,7 +34,8 @@ while IFS= read -r -d '' path; do
 	repo_paths+=("${path}")
 done < <(
 	git ls-files --cached --others --exclude-standard -z \
-		':(exclude)scripts/check-public-surface.sh'
+		':(exclude)scripts/check-public-surface.sh' \
+		':(exclude).claude/skills'
 )
 
 for needle in "${disallowed_literals[@]}"; do
