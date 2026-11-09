@@ -132,12 +132,11 @@ FROM ${PREFLIGHT_BUILDER_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
 COPY scripts/install-actionlint.sh /tmp/install-actionlint.sh
 RUN set -eux; \
-    echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries; \
-    apt-get update; \
+    apt-get-retry update; \
     snapshot_inrelease="/var/lib/apt/lists/snapshot.debian.org_archive_debian_${DEBIAN_SNAPSHOT_TIMESTAMP}_dists_${DEBIAN_SUITE}_InRelease"; \
     test -f "\${snapshot_inrelease}"; \
     echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  \${snapshot_inrelease}" | sha256sum --check --strict; \
-    apt-get install -y --no-install-recommends \
+    apt-get-retry install -y --no-install-recommends \
       ca-certificates \
       clang \
       clang-format \

@@ -115,6 +115,8 @@ make format
 - The Debian snapshot setup starts over plain HTTP.
 - The pinned base image does not contain CA roots before the first package installation.
 - The pinned base image digest, Debian archive signing, and pinned snapshot `InRelease` digest protect integrity.
+- Snapshot `apt-get` commands use `scripts/apt-get-retry.sh` or a retry loop with backoff.
+- apt does not retry by itself, because its delayed retry can flood the CI log.
 - Release packaging gets `SOURCE_DATE_EPOCH` from the source commit timestamp.
 - The snapshot-pinned builder makes primary tarballs and distribution packages reproducible for the same tag.
 - Release operations generate new SBOMs and signatures.

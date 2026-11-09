@@ -49,17 +49,29 @@ jobs:
       - name: Bootstrap pinned CI tooling
         run: |
           set -euo pipefail
-          echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries
+          # apt makes no retry of its own: its delayed retry can spin and flood
+          # the log (Debian bug #1111554). A failed index download is an error.
+          # Each apt-get loop below retries the full command with backoff.
+          printf '%s\n' 'Acquire::Retries "0";' 'APT::Update::Error-Mode "any";' \
+            > /etc/apt/apt.conf.d/80-retries
           echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90snapshot
           rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
           printf 'deb [check-valid-until=no] %s/%s/ %s main\n' \
             "${DEBIAN_SNAPSHOT_URL}" "${DEBIAN_SNAPSHOT_TIMESTAMP}" "${DEBIAN_SUITE}" \
             > /etc/apt/sources.list.d/snapshot.list
-          apt-get update
+          for attempt in 1 2 3 4 5; do
+            timeout 600 apt-get update && break
+            [[ "${attempt}" -lt 5 ]] || exit 1
+            sleep "$((attempt * 30))"
+          done
           snapshot_inrelease="/var/lib/apt/lists/snapshot.debian.org_archive_debian_${DEBIAN_SNAPSHOT_TIMESTAMP}_dists_${DEBIAN_SUITE}_InRelease"
           test -f "${snapshot_inrelease}"
           echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  ${snapshot_inrelease}" | sha256sum --check --strict
-          apt-get install -y --no-install-recommends ca-certificates git
+          for attempt in 1 2 3 4 5; do
+            timeout 600 apt-get install -y --no-install-recommends ca-certificates git && break
+            [[ "${attempt}" -lt 5 ]] || exit 1
+            sleep "$((attempt * 30))"
+          done
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -89,7 +101,7 @@ jobs:
         run: ./scripts/install-ci-deps.sh codeql-c-cpp
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -104,6 +116,6 @@ jobs:
           make CC=gcc test
 
       - name: Analyze
-        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           category: "/language:${{ matrix.language }}"

@@ -236,6 +236,29 @@ for path in \
 	require_literal "${path}" "sha256sum --check --strict"
 done
 
+# A snapshot mirror error must not fail CI on its own. apt makes no retry
+# of its own, because its delayed retry can spin and flood the log. Each
+# snapshot apt-get call goes through a bounded retry with backoff.
+for path in \
+	".github/workflows/build-test.yml" \
+	".github/workflows/codeql.yml" \
+	"docker/release-builder.Dockerfile"; do
+	require_literal "${path}" "'Acquire::Retries \"0\";' 'APT::Update::Error-Mode \"any\";'"
+done
+require_literal "scripts/install-ci-deps.sh" "./scripts/apt-get-retry.sh install"
+require_literal "docker/release-builder.Dockerfile" \
+	"COPY scripts/apt-get-retry.sh /usr/local/bin/apt-get-retry"
+if grep -nE -- 'apt-get (update|install)' \
+	".github/workflows/build-test.yml" \
+	".github/workflows/codeql.yml" \
+	"docker/release-builder.Dockerfile" \
+	"scripts/install-ci-deps.sh" \
+	"scripts/release-preflight.sh" |
+	grep -vE -- 'timeout [0-9]+ apt-get (update|install)[^&]*&& break$'; then
+	echo "Each snapshot apt-get call must use apt-get-retry or a bounded retry loop" >&2
+	exit 1
+fi
+
 require_literal_after \
 	".github/workflows/build-test.yml" \
 	"name: static-analysis" \
