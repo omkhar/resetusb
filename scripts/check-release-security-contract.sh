@@ -192,7 +192,7 @@ require_literal "scripts/test-package-integration.sh" \
 require_literal "scripts/test-package-integration.sh" 'gnu-coreutils'
 require_literal "scripts/test-package-integration.sh" 'gnurm'
 require_literal "scripts/test-package-integration.sh" \
-	'apt-get install -y --no-install-recommends ca-certificates passwd'
+	'apt-get-retry install -y --no-install-recommends ca-certificates passwd'
 
 # docker/package-test-images.lock is the single source of truth for the
 # package test images. Every entry must stay digest-pinned; the exact
@@ -267,6 +267,19 @@ if grep -nE -- 'apt-get (update|install)' \
 	echo "Each snapshot apt-get call must use apt-get-retry or a bounded retry loop" >&2
 	exit 1
 fi
+# The package tests and the ClusterFuzzLite image use live mirrors. Each
+# apt-get call there also goes through apt-get-retry.
+if grep -nE -- 'apt-get (update|install|download)' \
+	".clusterfuzzlite/Dockerfile" \
+	"scripts/test-package-integration.sh"; then
+	echo "Each live-mirror apt-get call must use apt-get-retry" >&2
+	exit 1
+fi
+require_literal ".clusterfuzzlite/Dockerfile" \
+	"COPY scripts/apt-get-retry.sh /usr/local/bin/apt-get-retry"
+# shellcheck disable=SC2016
+require_literal "scripts/test-package-integration.sh" \
+	'-v "${SCRIPT_DIR}/apt-get-retry.sh":/usr/local/bin/apt-get-retry:ro'
 
 require_literal_after \
 	".github/workflows/build-test.yml" \
