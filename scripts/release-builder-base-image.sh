@@ -6,16 +6,17 @@ set -euo pipefail
 #
 # The FROM line in docker/release-builder.Dockerfile is the single source of
 # truth for this image. Dependabot changes the digest only in that line, so
-# no other file keeps a copy. The lock file, CI, and the release manifest
-# read the image with this script.
+# no other file keeps a copy. The builder build script, the release
+# manifest, and the release security contract read the image with this
+# script.
 #
 # The Dockerfile must have exactly one FROM line, and that line must pin
 # debian:trixie by a full sha256 digest. Any other form is an error.
 
-SCRIPT_DIR="$(
-	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
+REPO_ROOT="$(
+	cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd
 )"
-DOCKERFILE="${1:-${SCRIPT_DIR}/../docker/release-builder.Dockerfile}"
+DOCKERFILE="${REPO_ROOT}/docker/release-builder.Dockerfile"
 
 base_image="$(awk 'toupper($1) == "FROM" {print $2}' "${DOCKERFILE}")"
 
