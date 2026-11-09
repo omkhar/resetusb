@@ -216,7 +216,6 @@ jobs:
 
           builder_lock = load_builder_lock(Path("builder/docker/release-builder.lock"))
           required_keys = {
-              "DEBIAN_BASE_IMAGE",
               "DEBIAN_SNAPSHOT_URL",
               "DEBIAN_SNAPSHOT_TIMESTAMP",
               "DEBIAN_SNAPSHOT_INRELEASE_SHA256",
@@ -225,6 +224,11 @@ jobs:
           missing_keys = sorted(required_keys.difference(builder_lock))
           if missing_keys:
               raise SystemExit(f"builder lock is missing: {', '.join(missing_keys)}")
+
+          builder_base_image = subprocess.check_output(
+              ["builder/scripts/release-builder-base-image.sh"],
+              text=True,
+          ).strip()
 
           source_date_epoch = subprocess.check_output(
               ["git", "-C", "source", "log", "-1", "--format=%ct", "HEAD"],
@@ -259,7 +263,7 @@ jobs:
               "builder_workflow": f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/.github/workflows/release-builder.yml@refs/tags/{os.environ["RELEASE_TAG"]}',
               "reproducible_inputs": {
                   "source_date_epoch": int(source_date_epoch),
-                  "builder_base_image": builder_lock["DEBIAN_BASE_IMAGE"],
+                  "builder_base_image": builder_base_image,
                   "debian_snapshot_url": builder_lock["DEBIAN_SNAPSHOT_URL"],
                   "debian_snapshot_timestamp": builder_lock["DEBIAN_SNAPSHOT_TIMESTAMP"],
                   "debian_snapshot_inrelease_sha256": builder_lock["DEBIAN_SNAPSHOT_INRELEASE_SHA256"],
