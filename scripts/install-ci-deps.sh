@@ -50,7 +50,7 @@ codeql-c-cpp)
 	;;
 esac
 
-apt-get install -y --no-install-recommends "${packages[@]}"
+./scripts/apt-get-retry.sh install -y --no-install-recommends "${packages[@]}"
 
 if [[ "${profile}" == "static-analysis" ]]; then
 	./scripts/install-actionlint.sh

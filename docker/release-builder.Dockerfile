@@ -7,8 +7,13 @@ ARG DEBIAN_SUITE
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# apt makes no retry of its own (Debian bug #1111554), and a failed index
+# download is an error. apt-get-retry.sh retries each command with backoff.
+COPY scripts/apt-get-retry.sh /usr/local/bin/apt-get-retry
+
 RUN set -eux; \
-    echo 'Acquire::Retries "6";' > /etc/apt/apt.conf.d/80-retries; \
+    printf '%s\n' 'Acquire::Retries "0";' 'APT::Update::Error-Mode "any";' \
+      > /etc/apt/apt.conf.d/80-retries; \
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90snapshot; \
     rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; \
     printf 'deb [check-valid-until=no] %s/%s/ %s main\n' \
@@ -16,11 +21,11 @@ RUN set -eux; \
       > /etc/apt/sources.list.d/snapshot.list; \
     dpkg --add-architecture arm64; \
     dpkg --add-architecture armhf; \
-    apt-get update; \
+    apt-get-retry update; \
     snapshot_inrelease="/var/lib/apt/lists/snapshot.debian.org_archive_debian_${DEBIAN_SNAPSHOT_TIMESTAMP}_dists_${DEBIAN_SUITE}_InRelease"; \
     test -f "${snapshot_inrelease}"; \
     echo "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}  ${snapshot_inrelease}" | sha256sum --check --strict; \
-    apt-get install -y --no-install-recommends \
+    apt-get-retry install -y --no-install-recommends \
       dpkg-dev \
       file \
       gcc \
