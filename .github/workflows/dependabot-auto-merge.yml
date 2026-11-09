@@ -1,0 +1,61 @@
+---
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    branches: ["main"]
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  dependabot:
+    name: Auto-Merge Dependabot PRs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: >
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.draft == false
+    steps:
+      - id: secrets
+        name: Check App secrets
+        env:
+          # A Dependabot-triggered run reads only Dependabot secrets.
+          APP_CLIENT_ID: ${{ secrets.AUTOMERGE_APP_CLIENT_ID }} # zizmor: ignore[secrets-outside-env] Dependabot runs read only Dependabot secrets
+          APP_PRIVATE_KEY: ${{ secrets.AUTOMERGE_APP_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env] Dependabot runs read only Dependabot secrets
+        run: |
+          if [[ -z "${APP_CLIENT_ID}" || -z "${APP_PRIVATE_KEY}" ]]; then
+            echo "::notice::Dependabot auto-merge is inactive until AUTOMERGE_APP_CLIENT_ID and AUTOMERGE_APP_PRIVATE_KEY exist as Dependabot secrets."
+            exit 0
+          fi
+          echo "present=true" >> "${GITHUB_OUTPUT}"
+
+      # A merge made with github.token does not trigger the push-to-main build
+      # workflow. A merge made with the App token does.
+      - id: app-token
+        if: steps.secrets.outputs.present == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        with:
+          client-id: ${{ secrets.AUTOMERGE_APP_CLIENT_ID }} # zizmor: ignore[secrets-outside-env] Dependabot runs read only Dependabot secrets
+          private-key: ${{ secrets.AUTOMERGE_APP_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env] Dependabot runs read only Dependabot secrets
+          permission-contents: write
+          permission-pull-requests: write
+          # GitHub Actions bumps edit files under .github/workflows.
+          permission-workflows: write
+
+      - name: Enable auto-merge for Dependabot PR
+        if: steps.secrets.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: gh pr merge --auto --squash --delete-branch --match-head-commit "$SHA" "$PR_URL"
