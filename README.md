@@ -19,6 +19,7 @@ Read [FUNCTIONS.md](FUNCTIONS.md) for the source-derived function inventory.
 
 ## Project Status
 
+- [Build Binaries](https://github.com/omkhar/resetusb/actions/workflows/build-binaries.yml): [![Build Binaries](https://github.com/omkhar/resetusb/actions/workflows/build-binaries.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/build-binaries.yml)
 - [CI](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml): [![CI](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/build-test.yml)
 - [Nightly Deep Validation](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml): [![Nightly Deep Validation](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/nightly-deep.yml)
 - [ClusterFuzzLite Batch](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml): [![ClusterFuzzLite Batch](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml/badge.svg)](https://github.com/omkhar/resetusb/actions/workflows/clusterfuzzlite-batch.yml)
@@ -258,6 +259,43 @@ The manifest records artifact digests, the builder revision, snapshot-pinned inp
 The source commit time determines primary artifact timestamps.
 If you rebuild the same tag, the process produces byte-stable tarballs and distribution packages.
 The release process generates new SBOMs, signatures, and attestations.
+
+## Build Releases
+
+- Each push to `main` that changes a shipped input starts `build-binaries.yml`.
+- Shipped inputs are the C source, the manual page, the `Makefile`, the release builder files, and the packaging scripts.
+- A maintainer can also start the workflow manually on `main`.
+- The workflow builds the release builder image from `docker/release-builder.Dockerfile`.
+- It runs `make test` and `scripts/build-release-artifacts.sh` in that image.
+- It publishes a GitHub prerelease with the tag `build-<version>`.
+- The version has the form `<upstream>+git<YYYYMMDDHHMM>.g<sha7>`.
+- `<upstream>` is the newest `vMAJOR.MINOR.PATCH` tag without the `v`. The timestamp is the UTC commit time.
+- A build prerelease does not replace the latest signed release.
+- Each build prerelease contains these assets:
+  - `resetusb_<version>_amd64.deb`, `resetusb_<version>_arm64.deb`, and `resetusb_<version>_armhf.deb`
+  - Linux tarballs for `amd64`, `arm64`, and `armv7`
+  - a `SHA256SUMS` file for the packages and tarballs
+  - a Sigstore keyless bundle (`.sigstore.json`) for each package, each tarball, and `SHA256SUMS`
+- Each package has `Package: resetusb` and the exact build version in its control fields.
+- A build prerelease has no signed tag, no SBOM, and no GitHub attestation.
+
+Verify build assets:
+
+```bash
+cosign verify-blob \
+  --bundle SHA256SUMS.sigstore.json \
+  --certificate-identity https://github.com/omkhar/resetusb/.github/workflows/build-binaries.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+The `release-puller` host tool can install each new build automatically.
+To enable it, add this line to its `packages.tsv` file:
+
+```text
+omkhar/resetusb	resetusb	0
+```
 
 ## Community
 

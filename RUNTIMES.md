@@ -37,7 +37,8 @@ This document uses ASD-STE100 Simplified Technical English.
 - Repository security automation uses Go 1.27.1.
 - The `resetusb` executable does not need Go.
 - Secret scans use Gitleaks 8.30.1.
-- Release workflows use Cosign 3.1.2 and Syft 1.49.0.
+- Release and build workflows use Cosign 3.1.3.
+- The release builder workflow uses Syft 1.51.1.
 - GitHub-hosted jobs use Ubuntu 24.04.
 - ClusterFuzzLite uses the locked OSS-Fuzz base-builder image.
 

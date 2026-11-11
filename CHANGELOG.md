@@ -2,6 +2,12 @@
 
 This document uses ASD-STE100 Simplified Technical English.
 
+## Unreleased
+
+- `build-binaries.yml` publishes a signed `build-*` prerelease when a `main` commit changes a shipped input.
+- Each prerelease contains Debian packages for `amd64`, `arm64`, and `armhf`, Linux tarballs, `SHA256SUMS`, and Sigstore bundles.
+- The release security contract also checks the cosign pin in `build-binaries.yml`.
+
 ## v2.0.16
 
 - This release refreshes pinned GitHub Actions, analysis tools, Debian builder inputs, and package validation images.

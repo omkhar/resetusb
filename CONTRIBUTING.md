@@ -134,6 +134,7 @@ make format
   - Debian stable and sid on `amd64`, `arm64`, and `armv7`
   - Ubuntu 24.04 and devel on `amd64`, `arm64`, and `armv7`
   - Fedora stable and rawhide on `amd64`
-- Do not publish binaries outside the release workflow.
+- Do not publish binaries outside `release.yml` and `build-binaries.yml`.
+- `build-binaries.yml` publishes only `build-*` prereleases from `main`.
 - Do not bypass the builder workflow.
 - When the packaging changes, verify that release artifacts include the installed documents, especially `resetusb(8)`.
