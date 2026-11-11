@@ -48,6 +48,7 @@ Shell functions stop their script when a required command, value, file, digest, 
 
 | File and function | Input | Result or limit |
 | --- | --- | --- |
+| `apt-get-retry.sh: use_ubuntu_mirror_fallback` | The apt sources, as root. | Adds other official Ubuntu mirrors to the Ubuntu archive sources. Keeps the signature check. Does not change other sources. |
 | `build-release-artifacts.sh: resolve_source_date_epoch` | An explicit time or Git state. | Prints a numeric source time. Requires an explicit value without Git metadata. |
 | `build-release-artifacts.sh: resolve_short_sha` | `GITHUB_SHA` or Git state. | Prints 12 commit characters. Prints `unknown` when neither source is available. |
 | `build-release-artifacts.sh: normalize_tree_timestamps` | A staging tree. | Sets all tree times to `SOURCE_DATE_EPOCH`. |

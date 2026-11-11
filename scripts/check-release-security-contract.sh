@@ -256,6 +256,9 @@ for path in \
 	require_literal "${path}" "'Acquire::Retries \"0\";' 'APT::Update::Error-Mode \"any\";'"
 done
 require_literal "scripts/install-ci-deps.sh" "./scripts/apt-get-retry.sh install"
+# One DNS fault can take down every ubuntu.com mirror at once, so the
+# Ubuntu archive sources also fall back to other official mirrors.
+require_literal "scripts/apt-get-retry.sh" "use_ubuntu_mirror_fallback"
 require_literal "docker/release-builder.Dockerfile" \
 	"COPY scripts/apt-get-retry.sh /usr/local/bin/apt-get-retry"
 if grep -nE -- 'apt-get (update|install)' \
