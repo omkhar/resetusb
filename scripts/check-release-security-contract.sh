@@ -116,26 +116,35 @@ require_literal "scripts/check-public-surface.sh" \
 source "docker/release-builder.lock"
 
 # The lock file is the single source of truth for the trusted builder
-# runtime. The contract validates its shape and cross-file consistency.
-if [[ ! "${DEBIAN_BASE_IMAGE}" =~ ^debian:trixie@sha256:[0-9a-f]{64}$ ||
-      ! "${DEBIAN_SNAPSHOT_TIMESTAMP}" =~ ^[0-9]{8}T[0-9]{6}Z$ ||
+# snapshot inputs. The contract validates its shape.
+if [[ ! "${DEBIAN_SNAPSHOT_TIMESTAMP}" =~ ^[0-9]{8}T[0-9]{6}Z$ ||
       ! "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}" =~ ^[0-9a-f]{64}$ ]]; then
 	echo "The trusted builder runtime lock is not valid" >&2
 	exit 1
 fi
 
-for path in \
-	".github/workflows/build-test.yml" \
-	".github/workflows/codeql.yml" \
-	"docker/release-builder.Dockerfile"; do
-	base_image_refs="$(
-		grep -Eo 'debian:trixie@sha256:[0-9a-f]{64}' "${path}" | sort -u
-	)"
-	if [[ "${base_image_refs}" != "${DEBIAN_BASE_IMAGE}" ]]; then
-		echo "Debian base image references in ${path} must match docker/release-builder.lock" >&2
-		exit 1
-	fi
-done
+# The FROM line in docker/release-builder.Dockerfile is the single source of
+# truth for the trusted builder base image. It must pin debian:trixie by a
+# full digest. Dependabot changes only that line, so the lock file must not
+# keep a copy of the digest.
+"${SCRIPT_DIR}/release-builder-base-image.sh" >/dev/null
+forbid_literal "docker/release-builder.lock" "DEBIAN_BASE_IMAGE"
+
+# Dependabot does not update workflow container images. Thus the CI
+# container jobs keep their own Debian image pin, separate from the builder
+# base image. Each Debian image reference in these workflows must pin
+# debian:trixie by a full digest, and all of them must be the same.
+ci_images="$(
+	for path in \
+		".github/workflows/build-test.yml" \
+		".github/workflows/codeql.yml"; do
+		grep -Eo -- 'debian:[^[:space:]]*' "${path}"
+	done | sort -u
+)"
+if [[ ! "${ci_images}" =~ ^debian:trixie@sha256:[0-9a-f]{64}$ ]]; then
+	echo "CI container jobs must use one debian:trixie image pinned by digest" >&2
+	exit 1
+fi
 
 require_literal ".github/workflows/security-baseline.yml" 'go-version: "1.27.1"'
 require_literal ".github/workflows/security-baseline.yml" \
@@ -183,7 +192,7 @@ require_literal "scripts/test-package-integration.sh" \
 require_literal "scripts/test-package-integration.sh" 'gnu-coreutils'
 require_literal "scripts/test-package-integration.sh" 'gnurm'
 require_literal "scripts/test-package-integration.sh" \
-	'apt-get install -y --no-install-recommends ca-certificates passwd'
+	'apt-get-retry install -y --no-install-recommends ca-certificates passwd'
 
 # docker/package-test-images.lock is the single source of truth for the
 # package test images. Every entry must stay digest-pinned; the exact
@@ -258,6 +267,19 @@ if grep -nE -- 'apt-get (update|install)' \
 	echo "Each snapshot apt-get call must use apt-get-retry or a bounded retry loop" >&2
 	exit 1
 fi
+# The package tests and the ClusterFuzzLite image use live mirrors. Each
+# apt-get call there also goes through apt-get-retry.
+if grep -nE -- 'apt-get (update|install|download)' \
+	".clusterfuzzlite/Dockerfile" \
+	"scripts/test-package-integration.sh"; then
+	echo "Each live-mirror apt-get call must use apt-get-retry" >&2
+	exit 1
+fi
+require_literal ".clusterfuzzlite/Dockerfile" \
+	"COPY scripts/apt-get-retry.sh /usr/local/bin/apt-get-retry"
+# shellcheck disable=SC2016
+require_literal "scripts/test-package-integration.sh" \
+	'-v "${SCRIPT_DIR}/apt-get-retry.sh":/usr/local/bin/apt-get-retry:ro'
 
 require_literal_after \
 	".github/workflows/build-test.yml" \

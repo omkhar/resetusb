@@ -19,7 +19,6 @@ fi
 source "${LOCK_FILE}"
 
 required_vars=(
-	DEBIAN_BASE_IMAGE
 	DEBIAN_SNAPSHOT_URL
 	DEBIAN_SNAPSHOT_TIMESTAMP
 	DEBIAN_SNAPSHOT_INRELEASE_SHA256
@@ -33,15 +32,8 @@ for name in "${required_vars[@]}"; do
 	fi
 done
 
-base_image_from_dockerfile="$(
-	awk 'toupper($1) == "FROM" {print $2; exit}' \
-		"${BUILDER_ROOT}/docker/release-builder.Dockerfile"
-)"
-
-if [[ "${base_image_from_dockerfile}" != "${DEBIAN_BASE_IMAGE}" ]]; then
-	echo "release builder lock base image does not match docker/release-builder.Dockerfile" >&2
-	exit 1
-fi
+# Stop before the build if the Dockerfile does not pin its base image.
+"${SCRIPT_DIR}/release-builder-base-image.sh" >/dev/null
 
 have_tag=false
 expect_tag_value=false

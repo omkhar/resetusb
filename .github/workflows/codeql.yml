@@ -20,7 +20,6 @@ defaults:
 permissions: {}
 
 env:
-  DEBIAN_BASE_IMAGE: debian:trixie@sha256:fac46bff2e02f51425b6e33b0e1169f55dfb053d83511ca28aa50c09fd5ed7a4
   DEBIAN_SNAPSHOT_URL: http://snapshot.debian.org/archive/debian
   DEBIAN_SNAPSHOT_TIMESTAMP: 20260721T000000Z
   DEBIAN_SNAPSHOT_INRELEASE_SHA256: 98b25b5cd185c59d34aa6e4c3e9b5b8f01bbe9d104fe2dcfbcd30dc0a14a59ed
@@ -82,7 +81,6 @@ jobs:
       - name: Verify CI snapshot lock matches the release builder lock
         run: |
           set -euo pipefail
-          expected_base_image="${DEBIAN_BASE_IMAGE}"
           expected_snapshot_url="${DEBIAN_SNAPSHOT_URL}"
           expected_snapshot_timestamp="${DEBIAN_SNAPSHOT_TIMESTAMP}"
           expected_snapshot_inrelease_sha256="${DEBIAN_SNAPSHOT_INRELEASE_SHA256}"
@@ -90,7 +88,6 @@ jobs:
           # shellcheck disable=SC1091
           . ./docker/release-builder.lock
 
-          [[ "${DEBIAN_BASE_IMAGE}" == "${expected_base_image}" ]]
           [[ "${DEBIAN_SNAPSHOT_URL}" == "${expected_snapshot_url}" ]]
           [[ "${DEBIAN_SNAPSHOT_TIMESTAMP}" == "${expected_snapshot_timestamp}" ]]
           [[ "${DEBIAN_SNAPSHOT_INRELEASE_SHA256}" == "${expected_snapshot_inrelease_sha256}" ]]

@@ -109,9 +109,14 @@ make format
 - If a release run fails before publication, rerun the workflow for the same tag.
 - The publish step reuses an existing draft.
 - It rewrites the draft notes and replaces the draft assets.
-- The trusted builder inputs live in `docker/release-builder.lock`.
+- The trusted builder snapshot inputs live in `docker/release-builder.lock`.
 - When you refresh the release toolchain, update that file with the builder or packaging change.
 - Explain the reason in the PR description.
+- The base image digest lives only in the `FROM` line of `docker/release-builder.Dockerfile`.
+- The builder build and the release manifest read the base image from that line with `scripts/release-builder-base-image.sh`.
+- Dependabot updates that digest. Do not copy it to other files.
+- CI container jobs pin a separate `debian:trixie` digest in `build-test.yml` and `codeql.yml`.
+- Dependabot does not update workflow container images. Refresh these pins when you refresh the snapshot inputs.
 - The Debian snapshot setup starts over plain HTTP.
 - The pinned base image does not contain CA roots before the first package installation.
 - The pinned base image digest, Debian archive signing, and pinned snapshot `InRelease` digest protect integrity.

@@ -453,19 +453,22 @@ run_deb_test() {
 			-v "${WORK_ROOT}":/work:ro \
 			-v "${DIST_DIR}":/dist:ro \
 			-v "${extracted_dir}":/tarball:ro \
+			-v "${SCRIPT_DIR}/apt-get-retry.sh":/usr/local/bin/apt-get-retry:ro \
 			-w /work \
 			"${image}" \
 			sh -euxc '
 				package_file=/dist/'"$(basename "${package_file}")"'
 				export DEBIAN_FRONTEND=noninteractive
-				apt-get update
+				# Live mirrors can fail for a short time. apt-get-retry
+				# retries each apt-get command with backoff.
+				apt-get-retry update
 				if [ "$RESETUSB_PACKAGE_TEST_TARGET" = "ubuntu/unstable/armv7" ]; then
 					gnu_coreutils_root=/tmp/resetusb-gnu-coreutils
 					mkdir -p "$gnu_coreutils_root/archive" "$gnu_coreutils_root/root"
 					chown _apt "$gnu_coreutils_root/archive"
 					(
 						cd "$gnu_coreutils_root/archive"
-						apt-get download gnu-coreutils
+						apt-get-retry download gnu-coreutils
 					)
 					set -- "$gnu_coreutils_root"/archive/gnu-coreutils_*.deb
 					test "$#" -eq 1
@@ -479,7 +482,7 @@ run_deb_test() {
 					rm -rf "$gnu_coreutils_root/remove-check"
 					test ! -e "$gnu_coreutils_root/remove-check"
 				fi
-				apt-get install -y --no-install-recommends ca-certificates passwd
+				apt-get-retry install -y --no-install-recommends ca-certificates passwd
 				dpkg-deb -I "$package_file" | grep -q "Package: resetusb"
 				dpkg-deb -I "$package_file" | grep -q "Architecture: '"${package_arch}"'"
 				dpkg-deb -c "$package_file" | grep -Eq "usr/share/man/man8/resetusb\\.8(\\.gz)?$"
@@ -492,7 +495,7 @@ run_deb_test() {
 					grep -Fq "ASD-STE100 Simplified Technical English" \
 						"$package_root/usr/share/doc/resetusb/${document}"
 				done
-				apt-get install -y "$package_file"
+				apt-get-retry install -y "$package_file"
 				test -x /usr/sbin/resetusb
 				ldd /usr/sbin/resetusb | grep -q libusb
 				useradd -m tester

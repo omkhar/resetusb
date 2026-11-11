@@ -131,8 +131,8 @@ Notes:
 - Public releases use semantic versioning and signed annotated tags in the form `vMAJOR.MINOR.PATCH`.
 - Release tags are immutable. If release contents change, maintainers create a new patch version.
 - Publication only happens after `release-preflight` succeeds. This check includes a repeat-build digest comparison for the release artifacts.
-- `docker/release-builder.lock` pins the trusted builder inputs.
-- The lock fixes the Debian base image digest and snapshot timestamp.
+- The `FROM` line in `docker/release-builder.Dockerfile` pins the Debian base image by digest.
+- `docker/release-builder.lock` pins the snapshot timestamp.
 - It also fixes the expected snapshot `InRelease` digest for build dependencies.
 - CI build and test jobs use the same snapshot-pinned Debian inputs as the release path.
 - Thus, the compiler and analysis tools do not drift from the release builder.
