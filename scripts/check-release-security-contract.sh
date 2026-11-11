@@ -167,6 +167,7 @@ if grep -Fq -- 'clamp_mtime_to_source_date_epoch' \
 	exit 1
 fi
 for path in \
+	".github/workflows/build-binaries.yml" \
 	".github/workflows/release-builder.yml" \
 	".github/workflows/release.yml"; do
 	require_literal "${path}" 'version="v3.1.3"'

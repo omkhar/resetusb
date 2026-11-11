@@ -48,6 +48,9 @@ Please include:
 - The release manifest records the commit digest and reproducible builder inputs.
 - Release artifacts include generic tarballs, distribution packages, the `resetusb(8)` manual page, and SHA256 checksums.
 - They include SPDX JSON SBOMs, Sigstore keyless bundles, GitHub provenance, and SBOM attestations.
+- `build-binaries.yml` publishes `build-*` prereleases from `main` with the same builder image.
+- These prereleases have a `SHA256SUMS` file and Sigstore keyless bundles.
+- They have no signed tag, no SBOM, and no GitHub attestation.
 
 ## Out of Scope
 
