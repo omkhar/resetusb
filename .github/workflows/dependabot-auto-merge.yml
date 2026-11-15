@@ -58,4 +58,20 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           SHA: ${{ github.event.pull_request.head.sha }}
-        run: gh pr merge --auto --squash --delete-branch --match-head-commit "$SHA" "$PR_URL"
+        # When two updates become mergeable together, the second can see
+        # "Base branch was modified" or a merge state GitHub is still
+        # recomputing. Both clear within seconds, so retry those briefly.
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if out=$(gh pr merge --auto --squash --delete-branch --match-head-commit "$SHA" "$PR_URL" 2>&1); then
+              printf '%s\n' "$out"
+              exit 0
+            fi
+            printf '%s\n' "$out" >&2
+            case "$out" in
+              *"Base branch was modified"* | *"is in unstable status"* | *"is in clean status"* | *"is in unknown status"*)
+                [[ "$attempt" -lt 5 ]] && sleep $((attempt * 10)) ;;
+              *) exit 1 ;;
+            esac
+          done
+          exit 1
