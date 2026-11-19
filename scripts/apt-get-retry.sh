@@ -56,7 +56,9 @@ fi
 # files that the Ubuntu archive key signed. Other sources (Debian,
 # snapshot pins, PPAs) are left as they are.
 ubuntu_mirror_list=/etc/apt/ubuntu-mirrors.list
-ubuntu_archive_re='https?://(([a-z0-9-]+\.)?archive|security|([a-z0-9-]+\.)?ports)\.ubuntu\.com/ubuntu(-ports)?/?'
+# Hosts may carry several labels before archive or ports: GitHub's
+# AWS-hosted runners list us-east-2.ec2.archive.ubuntu.com (2026-11-19).
+ubuntu_archive_re='https?://(([a-z0-9-]+\.)*archive|security|([a-z0-9-]+\.)*ports)\.ubuntu\.com/ubuntu(-ports)?/?'
 
 use_ubuntu_mirror_fallback() {
 	[ "${APT_UBUNTU_MIRROR_FALLBACK:-1}" = 1 ] || return 0
